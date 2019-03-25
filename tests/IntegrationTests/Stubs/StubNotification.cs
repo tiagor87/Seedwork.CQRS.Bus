@@ -1,14 +1,24 @@
 using Seedwork.CQRS.Bus.Core;
+using ZeroFormatter;
 
 namespace Seedwork.CQRS.Bus.IntegrationTests.Stubs
 {
-    public class StubNotification : BusNotification
+    [ZeroFormattable]
+    public class StubNotification : IBusNotification
     {
-        public StubNotification(string message) : base(StubExchange.Instance, "Seedwork.CQRS.Bus.Queue")
+        public StubNotification()
+        {
+        }
+
+        public StubNotification(string message)
         {
             Message = message;
         }
 
-        public string Message { get; }
+        [Index(0)] public virtual string Message { get; protected set; }
+
+        public Exchange GetExchange() => StubExchange.Instance;
+
+        public string GetRoutingKey() => "Seedwork.CQRS.Bus.Queue";
     }
 }

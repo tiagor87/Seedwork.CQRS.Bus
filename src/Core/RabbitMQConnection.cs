@@ -1,8 +1,6 @@
 using System;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -12,8 +10,10 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private readonly IModel _channel;
         private readonly IConnection _connection;
+        private readonly ISerializer _serializer;
 
-        public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/")
+        public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/",
+            ISerializer serializer = null)
         {
             var factory = new ConnectionFactory
             {
@@ -25,16 +25,17 @@ namespace Seedwork.CQRS.Bus.Core
             };
             _connection = factory.CreateConnection();
             _channel = _connection.CreateModel();
+            _serializer = new DefaultSerializer();
         }
 
-        public Task Publish(BusNotification notification, CancellationToken cancellationToken)
+        public Task Publish<T>(T notification, CancellationToken cancellationToken) where T : IBusNotification
         {
             return Task.Factory.StartNew(() =>
             {
                 var exchange = notification.GetExchange();
                 _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
 
-                var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(notification));
+                var body = _serializer.Serialize(notification).Result;
 
                 _channel.BasicPublish(exchange.Name, notification.GetRoutingKey(), false, null, body);
             }, cancellationToken);
@@ -56,7 +57,7 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     try
                     {
-                        var value = JsonConvert.DeserializeObject<T>(Encoding.UTF8.GetString(args.Body));
+                        var value = _serializer.Deserialize<T>(args.Body).Result;
 
                         observer.OnNext(value);
                         _channel.BasicAck(args.DeliveryTag, false);

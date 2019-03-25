@@ -1,9 +1,8 @@
-using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
 using RabbitMQ.Client;
 using Seedwork.CQRS.Bus.Core;
 using Seedwork.CQRS.Bus.IntegrationTests.Stubs;
+using ZeroFormatter;
 
 namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
 {
@@ -26,9 +25,9 @@ namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
             _channel = _connection.CreateModel();
         }
 
-        public void Publish(Exchange exchange, string routingKey, object message)
+        public void Publish<T>(Exchange exchange, string routingKey, T message)
         {
-            var body = Encoding.UTF8.GetBytes(JsonConvert.SerializeObject(message));
+            var body = ZeroFormatterSerializer.Serialize(message);
             _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
         }
 

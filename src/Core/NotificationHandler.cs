@@ -5,7 +5,7 @@ using MediatR;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class NotificationHandler : INotificationHandler<BusNotification>
+    public class NotificationHandler : INotificationHandler<IBusNotification>
     {
         private readonly IBusConnection _connection;
 
@@ -14,7 +14,7 @@ namespace Seedwork.CQRS.Bus.Core
             _connection = connection ?? throw new ArgumentNullException(nameof(connection));
         }
 
-        public Task Handle(BusNotification notification, CancellationToken cancellationToken)
+        public Task Handle(IBusNotification notification, CancellationToken cancellationToken)
         {
             return _connection.Publish(notification, cancellationToken);
         }

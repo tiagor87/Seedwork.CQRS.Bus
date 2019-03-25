@@ -5,7 +5,7 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public interface IBusConnection
     {
-        Task Publish(BusNotification notification, CancellationToken cancellationToken);
+        Task Publish<T>(T notification, CancellationToken cancellationToken) where T : IBusNotification;
 
         Task Subscribe<T>(BusObserver<T> observer);
     }
