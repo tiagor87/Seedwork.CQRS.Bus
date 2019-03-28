@@ -1,3 +1,4 @@
+using System;
 using MediatR;
 
 namespace Seedwork.CQRS.Bus.Core
@@ -6,5 +7,6 @@ namespace Seedwork.CQRS.Bus.Core
     {
         Exchange GetExchange();
         string GetRoutingKey();
+        TimeSpan GetDelay();
     }
 }

@@ -1,3 +1,4 @@
+using System;
 using System.Threading;
 using RabbitMQ.Client;
 using Seedwork.CQRS.Bus.Core;
@@ -31,25 +32,27 @@ namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
             _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
         }
 
-        public void Purge(Queue queue)
+        public void Purge(Exchange exchange, Queue queue)
         {
-            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete);
+            _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable, exchange.AutoDelete);
+            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
             _channel.QueueBind(queue.Name, StubExchange.Instance.Name, queue.RoutingKey);
 
             _channel.QueuePurge(queue.Name);
         }
 
-        public uint MessageCount(Queue queue)
+        public uint MessageCount(Exchange exchange, Queue queue)
         {
-            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete);
-            _channel.QueueBind(queue.Name, StubExchange.Instance.Name, queue.RoutingKey);
+            _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable, exchange.AutoDelete);
+            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
+            _channel.QueueBind(queue.Name, exchange.Name, queue.RoutingKey);
 
             return _channel.MessageCount(queue.Name);
         }
 
         public void Flush()
         {
-            Thread.Sleep(100);
+            Thread.Sleep(TimeSpan.FromMilliseconds(10));
         }
     }
 }

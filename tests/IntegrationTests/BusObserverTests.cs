@@ -22,13 +22,14 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         [Fact]
         public async Task Given_observer_should_notify()
         {
+            var exchange = StubExchange.Instance;
             var queue = new StubQueue("SuccessQueue", "Seedwork.CQRS.Bus.Success");
-            _rabbitMqUtils.Purge(queue);
+            _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
             await _connection.Subscribe(observer);
 
-            _rabbitMqUtils.Publish(StubExchange.Instance, queue.RoutingKey,
+            _rabbitMqUtils.Publish(exchange, queue.RoutingKey,
                 new StubNotification(nameof(BusObserverTests)));
 
             _rabbitMqUtils.Flush();
@@ -51,13 +52,14 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         [Fact]
         public async Task Given_observer_when_success_should_ack()
         {
+            var exchange = StubExchange.Instance;
             var queue = new StubQueue("AckSuccessQueue", "Seedwork.CQRS.Bus.AckSuccess");
-            _rabbitMqUtils.Purge(queue);
+            _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
             await _connection.Subscribe(observer);
 
-            _rabbitMqUtils.Publish(StubExchange.Instance, queue.RoutingKey,
+            _rabbitMqUtils.Publish(exchange, queue.RoutingKey,
                 new StubNotification(nameof(BusObserverTests)));
 
             _rabbitMqUtils.Flush();
@@ -65,19 +67,20 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             observer.Value.Should().NotBeNull();
             observer.Value.Message.Should().Be(nameof(BusObserverTests));
 
-            _rabbitMqUtils.MessageCount(queue).Should().Be(0);
+            _rabbitMqUtils.MessageCount(exchange, queue).Should().Be(0);
         }
 
         [Fact]
         public async Task Given_observer_when_throw_should_notify_error()
         {
+            var exchange = StubExchange.Instance;
             var queue = new StubQueue("ErrorQueue", "Seedwork.CQRS.Bus.ErrorQueue");
-            _rabbitMqUtils.Purge(queue);
+            _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
             await _connection.Subscribe(observer);
 
-            _rabbitMqUtils.Publish(StubExchange.Instance, queue.RoutingKey, 10);
+            _rabbitMqUtils.Publish(exchange, queue.RoutingKey, 10);
 
             _rabbitMqUtils.Flush();
 
@@ -87,13 +90,14 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         [Fact]
         public async Task Given_observer_when_throw_should_requeue()
         {
+            var exchange = StubExchange.Instance;
             var queue = new StubQueue("ErrorQueue", "Seedwork.CQRS.Bus.ErrorQueue");
-            _rabbitMqUtils.Purge(queue);
+            _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
             await _connection.Subscribe(observer);
 
-            _rabbitMqUtils.Publish(StubExchange.Instance, queue.RoutingKey, 10);
+            _rabbitMqUtils.Publish(exchange, queue.RoutingKey, 10);
 
             _rabbitMqUtils.Flush();
 

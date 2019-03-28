@@ -37,7 +37,17 @@ namespace Seedwork.CQRS.Bus.Core
 
                 var body = _serializer.Serialize(notification).Result;
 
-                _channel.BasicPublish(exchange.Name, notification.GetRoutingKey(), false, null, body);
+                var delay = notification.GetDelay();
+                if (delay == TimeSpan.Zero)
+                {
+                    _channel.BasicPublish(exchange.Name, notification.GetRoutingKey(), false, null, body);
+                    return;
+                }
+
+                var delayQueue = new DelayQueue(exchange, notification.GetRoutingKey(), notification.GetDelay());
+                DeclareQueue(exchange, delayQueue);
+
+                _channel.BasicPublish(exchange.Name, delayQueue.RoutingKey, false, null, body);
             }, cancellationToken);
         }
 
@@ -48,9 +58,7 @@ namespace Seedwork.CQRS.Bus.Core
                 var exchange = observer.GetExchange();
                 var queue = observer.GetQueue();
 
-                _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
-                _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete);
-                _channel.QueueBind(queue.Name, exchange.Name, queue.RoutingKey);
+                DeclareQueue(exchange, queue);
 
                 var consumer = new EventingBasicConsumer(_channel);
                 consumer.Received += (sender, args) =>
@@ -75,6 +83,13 @@ namespace Seedwork.CQRS.Bus.Core
                     _channel.BasicCancel(consumerId);
                 };
             });
+        }
+
+        private void DeclareQueue(Exchange exchange, Queue queue)
+        {
+            _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
+            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
+            _channel.QueueBind(queue.Name, exchange.Name, queue.RoutingKey);
         }
     }
 }
