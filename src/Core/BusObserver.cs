@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Seedwork.CQRS.Bus.Core
 {
@@ -29,6 +30,7 @@ namespace Seedwork.CQRS.Bus.Core
 
         internal event EventHandler OnDispose;
 
+        [ExcludeFromCodeCoverage]
         ~BusObserver()
         {
             Dispose(false);

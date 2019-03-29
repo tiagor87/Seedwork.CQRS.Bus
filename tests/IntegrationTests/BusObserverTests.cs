@@ -50,6 +50,21 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
+        public async Task Given_observer_when_dispose_twice_should_not_throw()
+        {
+            var observer = new StubObserver();
+
+            await _connection.Subscribe(observer);
+
+            Action action = () =>
+            {
+                observer.Dispose();
+                observer.Dispose();
+            };
+            action.Should().NotThrow();
+        }
+
+        [Fact]
         public async Task Given_observer_when_success_should_ack()
         {
             var exchange = StubExchange.Instance;

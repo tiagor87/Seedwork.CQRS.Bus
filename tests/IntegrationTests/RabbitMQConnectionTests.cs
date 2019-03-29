@@ -24,7 +24,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_Bus_Should_Publish()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue(nameof(Given_Bus_Should_Publish));
+            var queue = new StubQueue(nameof(Given_Bus_Should_Publish), nameof(Given_Bus_Should_Publish));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.Zero,
@@ -38,7 +38,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_Bus_Should_Publish_With_Delay()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue(nameof(Given_Bus_Should_Publish_With_Delay));
+            var queue = new StubQueue(nameof(Given_Bus_Should_Publish_With_Delay), nameof(Given_Bus_Should_Publish));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.FromMilliseconds(500),
