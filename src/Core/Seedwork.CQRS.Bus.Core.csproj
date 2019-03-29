@@ -2,6 +2,11 @@
 
     <PropertyGroup>
         <TargetFramework>netstandard2.0</TargetFramework>
+        <Title>Seedwork CQRS Bus</Title>
+        <Authors>tiagor87@gmail.com</Authors>
+        <Description>Package to use CQRS pattern with Message Queue</Description>
+        <PackageProjectUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</RepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>
