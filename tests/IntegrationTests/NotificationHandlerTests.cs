@@ -24,9 +24,12 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         [Fact]
         public async Task Given_notification_handler_should_publish_message()
         {
-            var notification = new StubNotification("Test message");
+            var exchange = StubExchange.Instance;
+            var queue = new StubQueue(nameof(Given_notification_handler_should_publish_message),
+                nameof(Given_notification_handler_should_publish_message));
+            var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.Zero, "Test message");
 
-            var observer = new StubObserver();
+            var observer = new StubObserver(queue);
             await _connection.Subscribe(observer);
             var handler = new NotificationHandler(_connection);
             await handler.Handle(notification, CancellationToken.None);

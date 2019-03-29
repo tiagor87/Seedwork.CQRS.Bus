@@ -23,7 +23,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_observer_should_notify()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue("SuccessQueue", "Seedwork.CQRS.Bus.Success");
+            var queue = new StubQueue(nameof(Given_observer_should_notify), nameof(Given_observer_should_notify));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
@@ -68,7 +68,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_observer_when_success_should_ack()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue("AckSuccessQueue", "Seedwork.CQRS.Bus.AckSuccess");
+            var queue = new StubQueue(nameof(Given_observer_when_success_should_ack),
+                nameof(Given_observer_when_success_should_ack));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
@@ -89,7 +90,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_observer_when_throw_should_notify_error()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue("ErrorQueue", "Seedwork.CQRS.Bus.ErrorQueue");
+            var queue = new StubQueue(nameof(Given_observer_when_throw_should_notify_error),
+                nameof(Given_observer_when_throw_should_notify_error));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
@@ -106,7 +108,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         public async Task Given_observer_when_throw_should_requeue()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue("ErrorQueue", "Seedwork.CQRS.Bus.ErrorQueue");
+            var queue = new StubQueue(nameof(Given_observer_when_throw_should_requeue),
+                nameof(Given_observer_when_throw_should_requeue));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);

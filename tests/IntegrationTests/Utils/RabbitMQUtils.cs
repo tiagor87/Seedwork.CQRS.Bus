@@ -52,7 +52,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
 
         public void Flush()
         {
-            Thread.Sleep(TimeSpan.FromMilliseconds(10));
+            Thread.Sleep(TimeSpan.FromMilliseconds(100));
         }
     }
 }
