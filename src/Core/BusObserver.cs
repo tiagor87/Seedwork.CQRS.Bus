@@ -45,7 +45,7 @@ namespace Seedwork.CQRS.Bus.Core
                 // Put objects to dispose here.
             }
 
-            OnDispose?.Invoke(this, null);
+            OnDispose?.Invoke(this, EventArgs.Empty);
 
             _disposed = true;
         }

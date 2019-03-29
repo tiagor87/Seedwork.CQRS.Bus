@@ -9,7 +9,6 @@ namespace Seedwork.CQRS.Bus.Core
     public class RabbitMQConnection : IBusConnection
     {
         private readonly IModel _channel;
-        private readonly IConnection _connection;
         private readonly ISerializer _serializer;
 
         public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/",
@@ -23,8 +22,8 @@ namespace Seedwork.CQRS.Bus.Core
                 VirtualHost = virtualHost,
                 AutomaticRecoveryEnabled = true
             };
-            _connection = factory.CreateConnection();
-            _channel = _connection.CreateModel();
+            var connection = factory.CreateConnection();
+            _channel = connection.CreateModel();
             _serializer = new DefaultSerializer();
         }
 
