@@ -24,7 +24,7 @@ namespace Seedwork.CQRS.Bus.Core
             };
             var connection = factory.CreateConnection();
             _channel = connection.CreateModel();
-            _serializer = new DefaultSerializer();
+            _serializer = serializer ?? new DefaultSerializer();
         }
 
         public Task Publish<T>(T notification, CancellationToken cancellationToken) where T : IBusNotification
