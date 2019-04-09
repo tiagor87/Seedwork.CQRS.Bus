@@ -45,7 +45,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 nameof(Given_Bus_Should_Publish_Notification_With_Delay));
             _rabbitMqUtils.Purge(exchange, queue);
 
-            var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.FromMilliseconds(500),
+            var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.FromMilliseconds(600),
                 nameof(Given_Bus_Should_Publish_Notification_With_Delay));
             await _connection.Publish(notification, CancellationToken.None);
 
@@ -68,7 +68,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 nameof(Given_Bus_Should_Publish_With_Delay));
             _rabbitMqUtils.Purge(exchange, queue);
 
-            var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.FromMilliseconds(500),
+            var notification = new StubNotification(exchange, queue.RoutingKey, TimeSpan.FromMilliseconds(600),
                 nameof(Given_Bus_Should_Publish_With_Delay));
             await _connection.Publish(notification.GetExchange(), notification.GetRoutingKey(), notification.GetDelay(),
                 notification, CancellationToken.None);
@@ -101,10 +101,11 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task Given_observer_should_notify()
+        public async Task Given_observer_should_be_notified()
         {
             var exchange = StubExchange.Instance;
-            var queue = new StubQueue(nameof(Given_observer_should_notify), nameof(Given_observer_should_notify));
+            var queue = new StubQueue(nameof(Given_observer_should_be_notified),
+                nameof(Given_observer_should_be_notified));
             _rabbitMqUtils.Purge(exchange, queue);
 
             var observer = new StubObserver(queue);
