@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using RabbitMQ.Client;
@@ -9,6 +11,7 @@ namespace Seedwork.CQRS.Bus.Core
     public class RabbitMQConnection : IBusConnection
     {
         private readonly IModel _channel;
+        private readonly IDictionary<object, string> _observers;
         private readonly ISerializer _serializer;
 
         public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/",
@@ -25,38 +28,41 @@ namespace Seedwork.CQRS.Bus.Core
             var connection = factory.CreateConnection();
             _channel = connection.CreateModel();
             _serializer = serializer ?? new DefaultSerializer();
+            _observers = new ConcurrentDictionary<object, string>();
         }
 
-        public Task Publish<T>(T notification, CancellationToken cancellationToken) where T : IBusNotification
+        public Task Publish(Exchange exchange, string routingKey, TimeSpan delay, object notification,
+            CancellationToken cancellationToken)
         {
             return Task.Factory.StartNew(() =>
             {
-                var exchange = notification.GetExchange();
                 _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
 
                 var body = _serializer.Serialize(notification).Result;
 
-                var delay = notification.GetDelay();
                 if (delay == TimeSpan.Zero)
                 {
-                    _channel.BasicPublish(exchange.Name, notification.GetRoutingKey(), false, null, body);
+                    _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
                     return;
                 }
 
-                var delayQueue = new DelayQueue(exchange, notification.GetRoutingKey(), notification.GetDelay());
+                var delayQueue = new DelayQueue(exchange, routingKey, delay);
                 DeclareQueue(exchange, delayQueue);
 
                 _channel.BasicPublish(exchange.Name, delayQueue.RoutingKey, false, null, body);
             }, cancellationToken);
         }
 
-        public Task Subscribe<T>(BusObserver<T> observer)
+        public Task Publish<T>(T notification, CancellationToken cancellationToken) where T : IBusNotification
+        {
+            return Publish(notification.GetExchange(), notification.GetRoutingKey(), notification.GetDelay(),
+                notification, cancellationToken);
+        }
+
+        public Task Subscribe<T>(Exchange exchange, Queue queue, IObserver<T> observer)
         {
             return Task.Factory.StartNew(() =>
             {
-                var exchange = observer.GetExchange();
-                var queue = observer.GetQueue();
-
                 DeclareQueue(exchange, queue);
 
                 var consumer = new EventingBasicConsumer(_channel);
@@ -75,13 +81,27 @@ namespace Seedwork.CQRS.Bus.Core
                         _channel.BasicNack(args.DeliveryTag, false, true);
                     }
                 };
-                var consumerId = _channel.BasicConsume(queue.Name, false, consumer);
-                observer.OnDispose += (sender, events) =>
+                var consumerTag = _channel.BasicConsume(queue.Name, false, consumer);
+                _observers.Add(observer, consumerTag);
+            });
+        }
+
+        public Task Unsubscribe<T>(IObserver<T> observer)
+        {
+            return Task.Factory.StartNew(() =>
+            {
+                if (_observers.TryGetValue(observer, out var consumerTag))
                 {
                     observer.OnCompleted();
-                    _channel.BasicCancel(consumerId);
-                };
+                    _channel.BasicCancel(consumerTag);
+                }
             });
+        }
+
+        public async Task Subscribe<T>(BusObserver<T> observer)
+        {
+            await Subscribe(observer.GetExchange(), observer.GetQueue(), observer);
+            observer.OnDispose += (sender, args) => Unsubscribe(observer).Wait();
         }
 
         private void DeclareQueue(Exchange exchange, Queue queue)
