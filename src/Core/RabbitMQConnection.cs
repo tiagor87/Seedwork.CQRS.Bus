@@ -13,22 +13,20 @@ namespace Seedwork.CQRS.Bus.Core
         private readonly IModel _channel;
         private readonly IDictionary<object, string> _observers;
         private readonly ISerializer _serializer;
-
-        public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/",
-            ISerializer serializer = null)
+        
+        public RabbitMQConnection(string connectionString,
+                    ISerializer serializer = null)
         {
-            var factory = new ConnectionFactory
-            {
-                UserName = username,
-                Password = password,
-                HostName = hostName,
-                VirtualHost = virtualHost,
-                AutomaticRecoveryEnabled = true
-            };
+            var factory = new ConnectionFactory() { Uri = new Uri(connectionString) };
             var connection = factory.CreateConnection();
             _channel = connection.CreateModel();
             _serializer = serializer ?? new DefaultSerializer();
             _observers = new ConcurrentDictionary<object, string>();
+        }
+
+        public RabbitMQConnection(string username, string password, string hostName, string virtualHost = "/", ISerializer serializer = null)
+            : this($"amqp://{username}:{password}@{hostName}{virtualHost}", serializer)
+        {
         }
 
         public Task Publish(Exchange exchange, string routingKey, TimeSpan delay, object notification,
