@@ -1,6 +1,8 @@
 using System;
 using System.Threading;
+using Polly;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Exceptions;
 using Seedwork.CQRS.Bus.Core;
 using Seedwork.CQRS.Bus.IntegrationTests.Stubs;
 using ZeroFormatter;
@@ -10,7 +12,6 @@ namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
     public class RabbitMQUtils
     {
         private readonly IModel _channel;
-        private readonly IConnection _connection;
 
         public RabbitMQUtils()
         {
@@ -22,8 +23,14 @@ namespace Seedwork.CQRS.Bus.IntegrationTests.Utils
                 VirtualHost = "/",
                 AutomaticRecoveryEnabled = true
             };
-            _connection = factory.CreateConnection();
-            _channel = _connection.CreateModel();
+
+            _channel = Policy.Handle<BrokerUnreachableException>()
+                .WaitAndRetry(5, i => TimeSpan.FromSeconds(i))
+                .Execute(() =>
+                {
+                    var connection = factory.CreateConnection();
+                    return connection.CreateModel();
+                });
         }
 
         public void Publish<T>(Exchange exchange, string routingKey, T message)
