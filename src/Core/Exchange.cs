@@ -4,7 +4,7 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public class Exchange
     {
-        protected Exchange(string name, ExchangeType type, bool durable = true, bool autoDelete = false)
+        public Exchange(string name, ExchangeType type, bool durable = true, bool autoDelete = false)
         {
             Name = name ?? throw new ArgumentNullException(nameof(name));
             Type = type.Value;
