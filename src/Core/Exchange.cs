@@ -2,7 +2,7 @@ using System;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public abstract class Exchange
+    public class Exchange
     {
         protected Exchange(string name, ExchangeType type, bool durable = true, bool autoDelete = false)
         {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public abstract class Queue
+    public class Queue
     {
         protected Queue(string name, string routingKey, bool durable = true, bool exclusive = false,
             bool autoDelete = false)
