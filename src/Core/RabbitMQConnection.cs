@@ -68,16 +68,26 @@ namespace Seedwork.CQRS.Bus.Core
                 var consumer = new EventingBasicConsumer(_channel);
                 consumer.Received += (sender, args) =>
                 {
+                    T value;
                     try
                     {
-                        var value = _serializer.Deserialize<T>(args.Body).Result;
+                        value = _serializer.Deserialize<T>(args.Body).Result;
+                    }
+                    catch (Exception exception)
+                    {
+                        observer.OnError(new BusDeserializeException(args.Body, exception));
+                        _channel.BasicNack(args.DeliveryTag, false, true);
+                        return;
+                    }
 
+                    try
+                    {
                         observer.OnNext(value);
                         _channel.BasicAck(args.DeliveryTag, false);
                     }
                     catch (Exception exception)
                     {
-                        observer.OnError(exception);
+                        observer.OnError(new BusExecutionException(value, exception));
                         _channel.BasicNack(args.DeliveryTag, false, true);
                     }
                 };
