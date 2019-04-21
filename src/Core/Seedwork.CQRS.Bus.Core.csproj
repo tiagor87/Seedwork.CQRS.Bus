@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="MediatR" Version="6.0.0"/>
+        <PackageReference Include="Polly" Version="7.1.0"/>
         <PackageReference Include="RabbitMQ.Client" Version="5.1.0"/>
         <PackageReference Include="ZeroFormatter" Version="1.6.4"/>
     </ItemGroup>
