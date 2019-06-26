@@ -63,6 +63,12 @@ namespace Seedwork.CQRS.Bus.Core
                     if (delay == TimeSpan.Zero)
                     {
                         _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
+
+                        _logger?.WriteInformation(
+                            $"{nameof(RabbitMQConnection)} - Delay message published",
+                            new KeyValuePair<string, object>("Exchange", exchange.Name),
+                            new KeyValuePair<string, object>("RoutingKey", routingKey),
+                            new KeyValuePair<string, object>("Delay", delay));
                         return;
                     }
 
@@ -70,6 +76,11 @@ namespace Seedwork.CQRS.Bus.Core
                     DeclareQueue(exchange, delayQueue);
 
                     _channel.BasicPublish(exchange.Name, delayQueue.RoutingKey, false, null, body);
+
+                    _logger?.WriteInformation(
+                        $"{nameof(RabbitMQConnection)} - Message published",
+                        new KeyValuePair<string, object>("Exchange", exchange.Name),
+                        new KeyValuePair<string, object>("RoutingKey", routingKey));
                 }
                 catch (Exception exception)
                 {
