@@ -13,13 +13,16 @@ namespace Seedwork.CQRS.Bus.Core
     public class RabbitMQConnection : IBusConnection
     {
         private readonly ConnectionFactory _connectionFactory;
+        private readonly ILogger _logger;
         private readonly IDictionary<object, string> _observers;
         private readonly ISerializer _serializer;
         private IModel _channel;
 
         public RabbitMQConnection(string connectionString,
-            ISerializer serializer = null)
+            ISerializer serializer = null,
+            ILogger logger = null)
         {
+            _logger = logger;
             _connectionFactory = new ConnectionFactory() {Uri = new Uri(connectionString)};
             _serializer = serializer ?? new DefaultSerializer();
             _observers = new ConcurrentDictionary<object, string>();
@@ -34,23 +37,50 @@ namespace Seedwork.CQRS.Bus.Core
         public Task Publish(Exchange exchange, string routingKey, TimeSpan delay, object notification,
             CancellationToken cancellationToken)
         {
-            return Task.Factory.StartNew(async () =>
+            return Task.Factory.StartNew(() =>
             {
-                await Connect();
+                Connect().Wait(cancellationToken);
                 _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
 
-                var body = _serializer.Serialize(notification).Result;
-
-                if (delay == TimeSpan.Zero)
+                byte[] body = null;
+                try
                 {
-                    _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
-                    return;
+                    body = _serializer.Serialize(notification).Result;
+                }
+                catch (Exception exception)
+                {
+                    _logger?.WriteException(
+                        $"{nameof(RabbitMQConnection)} - Serialization failed",
+                        exception,
+                        new KeyValuePair<string, object>("Exchange", exchange.Name),
+                        new KeyValuePair<string, object>("RoutingKey", routingKey),
+                        new KeyValuePair<string, object>("Delay", delay));
+                    throw;
                 }
 
-                var delayQueue = new DelayQueue(exchange, routingKey, delay);
-                DeclareQueue(exchange, delayQueue);
+                try
+                {
+                    if (delay == TimeSpan.Zero)
+                    {
+                        _channel.BasicPublish(exchange.Name, routingKey, false, null, body);
+                        return;
+                    }
 
-                _channel.BasicPublish(exchange.Name, delayQueue.RoutingKey, false, null, body);
+                    var delayQueue = new DelayQueue(exchange, routingKey, delay);
+                    DeclareQueue(exchange, delayQueue);
+
+                    _channel.BasicPublish(exchange.Name, delayQueue.RoutingKey, false, null, body);
+                }
+                catch (Exception exception)
+                {
+                    _logger?.WriteException(
+                        $"{nameof(RabbitMQConnection)} - Publish failed",
+                        exception,
+                        new KeyValuePair<string, object>("Exchange", exchange.Name),
+                        new KeyValuePair<string, object>("RoutingKey", routingKey),
+                        new KeyValuePair<string, object>("Delay", delay));
+                    throw;
+                }
             }, cancellationToken);
         }
 
@@ -62,9 +92,9 @@ namespace Seedwork.CQRS.Bus.Core
 
         public Task Subscribe<T>(Exchange exchange, Queue queue, IObserver<T> observer)
         {
-            return Task.Factory.StartNew(async () =>
+            return Task.Factory.StartNew(() =>
             {
-                await Connect();
+                Connect().Wait();
                 DeclareQueue(exchange, queue);
 
                 var consumer = new EventingBasicConsumer(_channel);
@@ -77,8 +107,14 @@ namespace Seedwork.CQRS.Bus.Core
                     }
                     catch (Exception exception)
                     {
-                        observer.OnError(new BusDeserializeException(args.Body, exception));
                         _channel.BasicNack(args.DeliveryTag, false, true);
+
+                        _logger?.WriteException(
+                            $"{nameof(RabbitMQConnection)} - Deserialization failed",
+                            exception,
+                            new KeyValuePair<string, object>("Exchange", args.Exchange),
+                            new KeyValuePair<string, object>("RoutingKey", args.RoutingKey));
+                        observer.OnError(new BusDeserializeException(args.Body, exception));
                         return;
                     }
 
@@ -89,11 +125,23 @@ namespace Seedwork.CQRS.Bus.Core
                     }
                     catch (Exception exception)
                     {
-                        observer.OnError(new BusExecutionException(value, exception));
                         _channel.BasicNack(args.DeliveryTag, false, true);
+
+                        _logger?.WriteException(
+                            $"{nameof(RabbitMQConnection)} - Event execution failed",
+                            exception,
+                            new KeyValuePair<string, object>("Exchange", args.Exchange),
+                            new KeyValuePair<string, object>("RoutingKey", args.RoutingKey));
+                        observer.OnError(new BusExecutionException(value, exception));
                     }
                 };
                 var consumerTag = _channel.BasicConsume(queue.Name, false, consumer);
+                _logger?.WriteInformation(
+                    $"{nameof(RabbitMQConnection)} - Consumer attached",
+                    new KeyValuePair<string, object>("Exchange", exchange.Name),
+                    new KeyValuePair<string, object>("Queue", queue.Name),
+                    new KeyValuePair<string, object>("RoutingKey", queue.RoutingKey),
+                    new KeyValuePair<string, object>("ConsumerTag", consumerTag));
                 _observers.Add(observer, consumerTag);
             });
         }
@@ -102,11 +150,13 @@ namespace Seedwork.CQRS.Bus.Core
         {
             return Task.Factory.StartNew(() =>
             {
-                if (_observers.TryGetValue(observer, out var consumerTag))
+                if (!_observers.TryGetValue(observer, out var consumerTag))
                 {
-                    observer.OnCompleted();
-                    _channel.BasicCancel(consumerTag);
+                    return;
                 }
+
+                observer.OnCompleted();
+                _channel.BasicCancel(consumerTag);
             });
         }
 
@@ -118,20 +168,41 @@ namespace Seedwork.CQRS.Bus.Core
 
         private void DeclareQueue(Exchange exchange, Queue queue)
         {
-            _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
-            _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
-            _channel.QueueBind(queue.Name, exchange.Name, queue.RoutingKey);
+            try
+            {
+                _channel.ExchangeDeclare(exchange.Name, exchange.Type, exchange.Durable);
+                _channel.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, queue.Arguments);
+                _channel.QueueBind(queue.Name, exchange.Name, queue.RoutingKey);
+            }
+            catch (Exception ex)
+            {
+                _logger?.WriteException($"{nameof(RabbitMQConnection)} - queue declare failed", ex);
+                throw;
+            }
         }
 
         private async Task Connect()
         {
-            _channel = _channel ?? await Policy.Handle<BrokerUnreachableException>()
-                           .WaitAndRetryAsync(5, i => TimeSpan.FromSeconds(i))
-                           .ExecuteAsync(() =>
-                           {
-                               var connection = _connectionFactory.CreateConnection();
-                               return Task.FromResult(connection.CreateModel());
-                           });
+            try
+            {
+                _channel = _channel ?? await Policy.Handle<BrokerUnreachableException>()
+                               .WaitAndRetryAsync(5, i => TimeSpan.FromSeconds(i))
+                               .ExecuteAsync(() =>
+                               {
+                                   var connection = _connectionFactory.CreateConnection();
+                                   return Task.FromResult(connection.CreateModel());
+                               });
+            }
+            catch (Exception ex)
+            {
+                _logger?.WriteException(
+                    $"{nameof(RabbitMQConnection)} - connection failed",
+                    ex,
+                    new KeyValuePair<string, object>("Host", _connectionFactory.HostName),
+                    new KeyValuePair<string, object>("Port", _connectionFactory.Port),
+                    new KeyValuePair<string, object>("Username", _connectionFactory.UserName));
+                throw;
+            }
         }
     }
 }
