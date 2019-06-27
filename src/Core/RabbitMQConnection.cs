@@ -15,15 +15,18 @@ namespace Seedwork.CQRS.Bus.Core
         private readonly IBusLogger _busLogger;
         private readonly ConnectionFactory _connectionFactory;
         private readonly IDictionary<object, string> _observers;
+        private readonly ushort _prefetchCount;
         private readonly ISerializer _serializer;
         private IModel _channel;
         private IConnection _connection;
 
         public RabbitMQConnection(string connectionString,
             ISerializer serializer = null,
-            IBusLogger busLogger = null)
+            IBusLogger busLogger = null,
+            ushort prefetchCount = 10)
         {
             _busLogger = busLogger;
+            _prefetchCount = prefetchCount;
             _connectionFactory = new ConnectionFactory() {Uri = new Uri(connectionString)};
             _serializer = serializer ?? new DefaultSerializer();
             _observers = new ConcurrentDictionary<object, string>();
@@ -216,6 +219,7 @@ namespace Seedwork.CQRS.Bus.Core
                         _connection = _connectionFactory.CreateConnection();
                         return Task.FromResult(_connection.CreateModel());
                     });
+                _channel.BasicQos(0, _prefetchCount, false);
             }
             catch (Exception ex)
             {
