@@ -1,6 +1,7 @@
 version: "2.3"
 services:
   rabbitmq:
-    image: rabbitmq:alpine
+    image: rabbitmq:management-alpine
     ports:
       - 5672:5672
+      - 15672:15672
