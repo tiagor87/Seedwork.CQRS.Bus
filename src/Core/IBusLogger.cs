@@ -6,6 +6,6 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public interface IBusLogger
     {
-        Task WriteException(string name, Exception exception, KeyValuePair<string, object> properties);
+        Task WriteException(string name, Exception exception, params KeyValuePair<string, object>[] properties);
     }
 }
