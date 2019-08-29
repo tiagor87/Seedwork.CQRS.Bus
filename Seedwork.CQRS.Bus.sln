@@ -11,6 +11,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F618B22D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seedwork.CQRS.Bus.IntegrationTests", "tests\IntegrationTests\Seedwork.CQRS.Bus.IntegrationTests.csproj", "{C2531957-FBF8-4FEC-8DE2-C38510FF43E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Seedwork.CQRS.Bus.UnitTests", "tests\UnitTests\Seedwork.CQRS.Bus.UnitTests.csproj", "{218A82EB-56D2-4D73-A557-426D32BF3E3B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -48,9 +50,22 @@ Global
 		{C2531957-FBF8-4FEC-8DE2-C38510FF43E8}.Release|x64.Build.0 = Release|Any CPU
 		{C2531957-FBF8-4FEC-8DE2-C38510FF43E8}.Release|x86.ActiveCfg = Release|Any CPU
 		{C2531957-FBF8-4FEC-8DE2-C38510FF43E8}.Release|x86.Build.0 = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|x64.Build.0 = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Debug|x86.Build.0 = Debug|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|x64.ActiveCfg = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|x64.Build.0 = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|x86.ActiveCfg = Release|Any CPU
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{6AB77A43-6519-4409-B7BC-46BDBDB96AD2} = {22984ADC-1FF7-44F6-9B2B-6122F9A3E68B}
 		{C2531957-FBF8-4FEC-8DE2-C38510FF43E8} = {F618B22D-AD1F-46D5-B5CA-02C71809CE10}
+		{218A82EB-56D2-4D73-A557-426D32BF3E3B} = {F618B22D-AD1F-46D5-B5CA-02C71809CE10}
 	EndGlobalSection
 EndGlobal

@@ -1,16 +1,25 @@
-using System;
+using System.Collections.Generic;
+using Seedwork.DomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class ExchangeType
+    public class ExchangeType : ValueObject
     {
-        private ExchangeType(string type)
+        private ExchangeType(string value)
         {
-            Value = type ?? throw new ArgumentNullException(nameof(type));
+            Value = value;
         }
 
+        public string Value { get; }
+
+        public static ExchangeType Fanout => new ExchangeType("fanout");
+        public static ExchangeType Direct => new ExchangeType("direct");
+        public static ExchangeType Headers => new ExchangeType("headers");
         public static ExchangeType Topic => new ExchangeType("topic");
 
-        public string Value { get; }
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Value;
+        }
     }
 }
