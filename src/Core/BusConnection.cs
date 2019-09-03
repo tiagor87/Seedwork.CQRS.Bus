@@ -32,9 +32,9 @@ namespace Seedwork.CQRS.Bus.Core
             _connectionFactory = connectionFactory;
         }
 
-        public BusConnection(string connectionString,
+        public BusConnection(BusConnectionString connectionString,
             IBusSerializer serializer,
-            IServiceScopeFactory serviceScopeFactory) : this(GetConnectionFactory(connectionString), serializer,
+            IServiceScopeFactory serviceScopeFactory) : this(GetConnectionFactory(connectionString.Value), serializer,
             serviceScopeFactory)
         {
         }
@@ -143,11 +143,11 @@ namespace Seedwork.CQRS.Bus.Core
             Dispose(false);
         }
 
-        private static IConnectionFactory GetConnectionFactory(string connectionString)
+        private static IConnectionFactory GetConnectionFactory(Uri connectionString)
         {
             return new ConnectionFactory
             {
-                Uri = new Uri(connectionString),
+                Uri = connectionString,
                 AutomaticRecoveryEnabled = true,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(30)
             };
