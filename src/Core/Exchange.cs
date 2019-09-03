@@ -6,7 +6,7 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public class Exchange
     {
-        private IDictionary<string, object> _arguments = new Dictionary<string, object>();
+        private readonly IDictionary<string, object> _arguments = new Dictionary<string, object>();
 
         private Exchange(ExchangeName name, ExchangeType type)
         {

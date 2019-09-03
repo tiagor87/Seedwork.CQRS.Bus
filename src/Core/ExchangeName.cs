@@ -21,7 +21,8 @@ namespace Seedwork.CQRS.Bus.Core
                 throw new ArgumentNullException(nameof(name));
             }
 
-            if (!Regex.IsMatch(name.Trim(), @"^[a-z](\.(?!\.|$)|[a-z]|\-(?!$|\-))+$"))
+            if (!Regex.IsMatch(name.Trim(), @"^[\w](\.(?!\.|$)|[\w]|\-(?!$|\-))+$", RegexOptions.None,
+                TimeSpan.FromMilliseconds(10)))
             {
                 throw new ArgumentException(
                     "The exchange name is invalid. It should follow the rule \"[application-name].[specification-1]<.<specification-n>>\".",

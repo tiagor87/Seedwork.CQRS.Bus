@@ -21,7 +21,8 @@ namespace Seedwork.CQRS.Bus.Core
                 throw new ArgumentNullException(nameof(routing));
             }
 
-            if (!Regex.IsMatch(routing.Trim(), @"^[\w](\.(?!\.|$)|[\w\*#]|\-(?!$|\-))+$")
+            if (!Regex.IsMatch(routing.Trim(), @"^[\w](\.(?!\.|$)|[\w\*#]|\-(?!$|\-))+$", RegexOptions.None,
+                    TimeSpan.FromMilliseconds(10))
                 || routing.Split('.').Length == 1)
             {
                 throw new ArgumentException(
