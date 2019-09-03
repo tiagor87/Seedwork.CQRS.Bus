@@ -165,7 +165,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((EventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -224,7 +224,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((EventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,

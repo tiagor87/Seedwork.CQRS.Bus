@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, EventingBasicConsumer)> _consumers;
+        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)> _consumers;
         private readonly IBusSerializer _serializer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private IConnection _connection;
@@ -28,7 +28,7 @@ namespace Seedwork.CQRS.Bus.Core
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
-            _consumers = new ConcurrentDictionary<string, (IModel, EventingBasicConsumer)>();
+            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)>();
             _connectionFactory = connectionFactory;
         }
 
@@ -72,7 +72,7 @@ namespace Seedwork.CQRS.Bus.Core
             queue.Declare(channel);
             queue.Bind(channel, exchange.Name, routingKey);
 
-            var consumer = new EventingBasicConsumer(channel);
+            var consumer = new AsyncEventingBasicConsumer(channel);
             channel.ModelShutdown += (sender, args) =>
             {
                 if (args.Initiator == ShutdownInitiator.Application)
@@ -103,6 +103,11 @@ namespace Seedwork.CQRS.Bus.Core
                     catch (Exception exception)
                     {
                         channel.BasicNack(args.DeliveryTag, false, true);
+
+                        if (logger == null)
+                        {
+                            return;
+                        }
 
                         await logger.WriteException(typeof(T).Name, exception,
                             new KeyValuePair<string, object>("Event", dto));
@@ -149,7 +154,8 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 Uri = connectionString,
                 AutomaticRecoveryEnabled = true,
-                NetworkRecoveryInterval = TimeSpan.FromSeconds(30)
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(30),
+                DispatchConsumersAsync = true
             };
         }
 
