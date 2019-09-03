@@ -21,7 +21,7 @@ namespace Seedwork.CQRS.Bus.Core
                 throw new ArgumentNullException(nameof(name));
             }
 
-            if (!Regex.IsMatch(name.Trim(), @"^[a-z](\.(?!\.|$)|[a-z]|\-(?!$|\-))+$")
+            if (!Regex.IsMatch(name.Trim(), @"^[\w](\.(?!\.|$)|[\w]|\-(?!$|\-))+$")
                 || name.Split('.').Length == 1)
             {
                 throw new ArgumentException(

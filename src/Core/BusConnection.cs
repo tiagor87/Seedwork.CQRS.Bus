@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)> _consumers;
+        private readonly ConcurrentDictionary<string, (IModel, EventingBasicConsumer)> _consumers;
         private readonly IBusSerializer _serializer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
         private IConnection _connection;
@@ -28,7 +28,7 @@ namespace Seedwork.CQRS.Bus.Core
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
-            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)>();
+            _consumers = new ConcurrentDictionary<string, (IModel, EventingBasicConsumer)>();
             _connectionFactory = connectionFactory;
         }
 
@@ -72,7 +72,7 @@ namespace Seedwork.CQRS.Bus.Core
             queue.Declare(channel);
             queue.Bind(channel, exchange.Name, routingKey);
 
-            var consumer = new AsyncEventingBasicConsumer(channel);
+            var consumer = new EventingBasicConsumer(channel);
             channel.ModelShutdown += (sender, args) =>
             {
                 if (args.Initiator == ShutdownInitiator.Application)

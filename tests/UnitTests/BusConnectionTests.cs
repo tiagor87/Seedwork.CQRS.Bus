@@ -165,14 +165,14 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((EventingBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
                         exchange.Name.Value,
                         routingKey.Value,
                         new BasicProperties(),
-                        body).Wait();
+                        body);
                 })
                 .Returns(Guid.NewGuid().ToString());
 
@@ -224,14 +224,14 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((EventingBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
                         exchange.Name.Value,
                         routingKey.Value,
                         new BasicProperties(),
-                        body).Wait();
+                        body);
                 })
                 .Returns(Guid.NewGuid().ToString());
 
