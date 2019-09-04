@@ -41,6 +41,16 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
+        public void GivenExchangeWhenConfigureDurabilityShouldSetProperty()
+        {
+            var exchange = Exchange.Create("seedwork", ExchangeType.Direct);
+            exchange = exchange.WithDurability(Durability.Durable);
+
+            exchange.Should().NotBeNull();
+            exchange.Durability.Should().Be(Durability.Durable);
+        }
+
+        [Fact]
         public void GivenExchangeWhenConfigureWithAlternateExchangeShouldAddArgument()
         {
             var exchangeName = ExchangeName.Create("seedwork.core");

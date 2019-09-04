@@ -172,7 +172,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                         exchange.Name.Value,
                         routingKey.Value,
                         new BasicProperties(),
-                        body);
+                        body).Wait();
                 })
                 .Returns(Guid.NewGuid().ToString());
 
@@ -231,7 +231,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                         exchange.Name.Value,
                         routingKey.Value,
                         new BasicProperties(),
-                        body);
+                        body).Wait();
                 })
                 .Returns(Guid.NewGuid().ToString());
 

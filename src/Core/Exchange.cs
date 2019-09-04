@@ -29,6 +29,13 @@ namespace Seedwork.CQRS.Bus.Core
             return new Exchange(ExchangeName.Create(name), type);
         }
 
+        public Exchange WithDurability(Durability durability)
+        {
+            Durability = durability;
+
+            return this;
+        }
+
         /// <summary>
         /// The exchange will delete itself after at least one queue or exchange has been bound to this one, and then all queues or exchanges have been unbound.  
         /// </summary>
