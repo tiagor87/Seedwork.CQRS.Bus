@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
@@ -88,31 +89,34 @@ namespace Seedwork.CQRS.Bus.Core
                         autorecoveringChannel.AutomaticallyRecover((AutorecoveringConnection) Connection, null);
                     });
             };
-            consumer.Received += async (sender, args) =>
+            consumer.Received += (sender, args) =>
             {
-                using (var scope = _serviceScopeFactory.CreateScope())
+                Task.Run(async () =>
                 {
-                    var logger = scope.ServiceProvider.GetService<IBusLogger>();
-
-                    var dto = await _serializer.Deserialize<T>(args.Body);
-                    try
+                    using (var scope = _serviceScopeFactory.CreateScope())
                     {
-                        await action.Invoke(scope, dto);
-                        channel.BasicAck(args.DeliveryTag, false);
-                    }
-                    catch (Exception exception)
-                    {
-                        channel.BasicNack(args.DeliveryTag, false, true);
-
-                        if (logger == null)
+                        var dto = await _serializer.Deserialize<T>(args.Body);
+                        try
                         {
-                            return;
+                            await action.Invoke(scope, dto);
+                            channel.BasicAck(args.DeliveryTag, false);
                         }
+                        catch (Exception exception)
+                        {
+                            channel.BasicNack(args.DeliveryTag, false, true);
 
-                        await logger.WriteException(typeof(T).Name, exception,
-                            new KeyValuePair<string, object>("Event", dto));
+                            var logger = scope.ServiceProvider.GetService<IBusLogger>();
+                            if (logger == null)
+                            {
+                                return;
+                            }
+
+                            await logger.WriteException(typeof(T).Name, exception,
+                                new KeyValuePair<string, object>("Event", dto));
+                        }
                     }
-                }
+                });
+                return Task.CompletedTask;
             };
 
             var consumerTag = channel.BasicConsume(queue.Name.Value, false, consumer);
@@ -128,6 +132,30 @@ namespace Seedwork.CQRS.Bus.Core
                 queue.Declare(channel);
                 queue.Bind(channel, exchange.Name, routingKey);
                 channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, null, body);
+                channel.Close();
+            }
+        }
+
+        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+            IEnumerable<object> notification)
+        {
+            using (var channel = Connection.CreateModel())
+            {
+                exchange.Declare(channel);
+                queue.Declare(channel);
+                queue.Bind(channel, exchange.Name, routingKey);
+                var bodiesTask = notification.Select(obj => _serializer.Serialize(obj)).ToList();
+
+                await Task.WhenAll(bodiesTask);
+
+                var batch = channel.CreateBasicPublishBatch();
+                foreach (var task in bodiesTask)
+                {
+                    var body = task.Result;
+                    batch.Add(exchange.Name.Value, routingKey.Value, false, null, body);
+                }
+
+                batch.Publish();
                 channel.Close();
             }
         }

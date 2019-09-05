@@ -22,5 +22,14 @@ namespace Seedwork.CQRS.Bus.UnitTests
 
             connectionString.Should().NotBeNull();
         }
+
+        [Fact]
+        public void GivenConnectionStringsWhenValuesAreSameShouldBeEquals()
+        {
+            var connectionString1 = BusConnectionString.Create("amqp://guest:guest@localhost/");
+            var connectionString2 = BusConnectionString.Create("amqp://guest:guest@localhost/");
+
+            connectionString1.Should().Be(connectionString2);
+        }
     }
 }

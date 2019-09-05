@@ -18,7 +18,24 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         private readonly BusConnectionFixture _connectionFixture;
 
         [Fact]
-        public async Task GivenConnectionWhenPublishQueueShouldHaveCountOne()
+        public async Task GivenConnectionWhenPublishBatchShouldQueueHaveBatchLength()
+        {
+            var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
+            var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
+                .WithAutoDelete();
+            var routingKey = RoutingKey.Create(queue.Name.Value);
+            const string notification = "Notification message";
+            await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, new[]
+            {
+                notification,
+                notification
+            });
+
+            _connectionFixture.Connection.MessageCount(queue).Should().Be(2);
+        }
+
+        [Fact]
+        public async Task GivenConnectionWhenPublishMessageShouldQueueHaveCountOne()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")

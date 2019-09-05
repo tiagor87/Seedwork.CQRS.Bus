@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
@@ -177,11 +178,15 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Returns(Guid.NewGuid().ToString());
 
             var isExecuted = false;
+            var autoResetEvent = new AutoResetEvent(false);
             _busConnection.Subscribe<string>(exchange, queue, routingKey, 10, (scope, @event) =>
             {
                 isExecuted = true;
+                autoResetEvent.Set();
                 return Task.CompletedTask;
             });
+
+            autoResetEvent.WaitOne();
 
             isExecuted.Should().BeTrue();
             _channelMock.Verify(x => x.BasicQos(0, 10, false), Times.Once());
