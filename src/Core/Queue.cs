@@ -196,5 +196,11 @@ namespace Seedwork.CQRS.Bus.Core
                 .MessagesExpiresIn(ttl)
                 .SendExpiredMessagesTo(targetExchange, targetRoutingKey);
         }
+
+        protected internal Queue CreateFailedQueue()
+        {
+            return Create($"{Name.Value}-failed")
+                .WithDurability(Durability.Durable);
+        }
     }
 }

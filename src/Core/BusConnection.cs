@@ -94,6 +94,12 @@ namespace Seedwork.CQRS.Bus.Core
                                 var retryQueue = queue.CreateRetryQueue(TimeSpan.FromMinutes(1), exchange, routingKey);
                                 await Publish(exchange, retryQueue, RoutingKey.Create(retryQueue.Name.Value), message);
                             }
+                            else
+                            {
+                                var failedQueue = queue.CreateFailedQueue();
+                                await Publish(exchange, failedQueue, RoutingKey.Create(failedQueue.Name.Value),
+                                    message);
+                            }
 
                             channel.BasicNack(args.DeliveryTag, false, false);
 

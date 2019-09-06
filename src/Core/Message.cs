@@ -64,7 +64,7 @@ namespace Seedwork.CQRS.Bus.Core
 
         public bool CanRetry()
         {
-            return AttemptCount < MaxAttempts;
+            return MaxAttempts == 0 || AttemptCount < MaxAttempts;
         }
     }
 }
