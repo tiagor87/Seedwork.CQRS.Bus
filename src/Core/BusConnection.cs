@@ -67,43 +67,35 @@ namespace Seedwork.CQRS.Bus.Core
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
             Func<IServiceScope, T, Task> action)
         {
-            var channel = Connection.CreateModel();
+            var channel = CreateChannel();
             channel.BasicQos(0, prefetchCount, false);
             exchange.Declare(channel);
             queue.Declare(channel);
-            queue.Bind(channel, exchange.Name, routingKey);
+            queue.Bind(channel, exchange, routingKey);
 
             var consumer = new AsyncEventingBasicConsumer(channel);
-            channel.ModelShutdown += (sender, args) =>
-            {
-                if (args.Initiator == ShutdownInitiator.Application)
-                {
-                    return;
-                }
 
-                Policy.Handle<BrokerUnreachableException>()
-                    .RetryForever()
-                    .Execute(() =>
-                    {
-                        var autorecoveringChannel = (AutorecoveringModel) channel;
-                        autorecoveringChannel.AutomaticallyRecover((AutorecoveringConnection) Connection, null);
-                    });
-            };
             consumer.Received += (sender, args) =>
             {
                 Task.Run(async () =>
                 {
                     using (var scope = _serviceScopeFactory.CreateScope())
                     {
-                        var dto = await _serializer.Deserialize<T>(args.Body);
+                        var message = Message.Create<T>(_serializer, args);
                         try
                         {
-                            await action.Invoke(scope, dto);
+                            await action.Invoke(scope, (T) message.Data);
                             channel.BasicAck(args.DeliveryTag, false);
                         }
                         catch (Exception exception)
                         {
-                            channel.BasicNack(args.DeliveryTag, false, true);
+                            if (message.CanRetry())
+                            {
+                                var retryQueue = queue.CreateRetryQueue(TimeSpan.FromMinutes(1), exchange, routingKey);
+                                await Publish(exchange, retryQueue, RoutingKey.Create(retryQueue.Name.Value), message);
+                            }
+
+                            channel.BasicNack(args.DeliveryTag, false, false);
 
                             var logger = scope.ServiceProvider.GetService<IBusLogger>();
                             if (logger == null)
@@ -112,7 +104,7 @@ namespace Seedwork.CQRS.Bus.Core
                             }
 
                             await logger.WriteException(typeof(T).Name, exception,
-                                new KeyValuePair<string, object>("Event", dto));
+                                new KeyValuePair<string, object>("Event", message));
                         }
                     }
                 });
@@ -123,36 +115,53 @@ namespace Seedwork.CQRS.Bus.Core
             _consumers.GetOrAdd(consumerTag, (channel, consumer));
         }
 
-        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object notification)
+        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {
-            var body = await _serializer.Serialize(notification);
-            using (var channel = Connection.CreateModel())
-            {
-                exchange.Declare(channel);
-                queue.Declare(channel);
-                queue.Bind(channel, exchange.Name, routingKey);
-                channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, null, body);
-                channel.Close();
-            }
+            await Policy.Handle<TimeoutException>()
+                .RetryForeverAsync()
+                .ExecuteAsync(async () =>
+                {
+                    using (var channel = CreateChannel())
+                    {
+                        exchange.Declare(channel);
+                        queue.Declare(channel);
+                        queue.Bind(channel, exchange, routingKey);
+                        var (body, basicProperties) = await message.GetData(channel, _serializer);
+                        channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, basicProperties, body);
+                        channel.Close();
+                    }
+                });
+        }
+
+        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
+        {
+            await Publish(exchange, queue, routingKey, Message.Create(data, 5));
         }
 
         public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<object> notification)
         {
-            using (var channel = Connection.CreateModel())
+            var messages = notification.Select(x => Message.Create(x, 5));
+            await PublishBatch(exchange, queue, routingKey, messages);
+        }
+
+        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+            IEnumerable<Message> messages)
+        {
+            using (var channel = CreateChannel())
             {
                 exchange.Declare(channel);
                 queue.Declare(channel);
-                queue.Bind(channel, exchange.Name, routingKey);
-                var bodiesTask = notification.Select(obj => _serializer.Serialize(obj)).ToList();
+                queue.Bind(channel, exchange, routingKey);
+                var tasks = messages.Select(m => m.GetData(channel, _serializer)).ToList();
 
-                await Task.WhenAll(bodiesTask);
+                await Task.WhenAll(tasks);
 
                 var batch = channel.CreateBasicPublishBatch();
-                foreach (var task in bodiesTask)
+                foreach (var task in tasks)
                 {
-                    var body = task.Result;
-                    batch.Add(exchange.Name.Value, routingKey.Value, false, null, body);
+                    var (body, properties) = task.Result;
+                    batch.Add(exchange.Name.Value, routingKey.Value, false, properties, body);
                 }
 
                 batch.Publish();
@@ -163,7 +172,7 @@ namespace Seedwork.CQRS.Bus.Core
         public async Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
         {
             var body = await _serializer.Serialize(notification);
-            using (var channel = Connection.CreateModel())
+            using (var channel = CreateChannel())
             {
                 exchange.Declare(channel);
                 channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, null, body);
@@ -182,9 +191,32 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 Uri = connectionString,
                 AutomaticRecoveryEnabled = true,
-                NetworkRecoveryInterval = TimeSpan.FromSeconds(30),
+                TopologyRecoveryEnabled = true,
+                RequestedHeartbeat = 30,
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
                 DispatchConsumersAsync = true
             };
+        }
+
+        private IModel CreateChannel()
+        {
+            var channel = Connection.CreateModel();
+            channel.ModelShutdown += (sender, args) =>
+            {
+                if (args.Initiator == ShutdownInitiator.Application)
+                {
+                    return;
+                }
+
+                Policy.Handle<BrokerUnreachableException>()
+                    .RetryForever()
+                    .Execute(() =>
+                    {
+                        var autoRecoveringChannel = (AutorecoveringModel) channel;
+                        autoRecoveringChannel.AutomaticallyRecover((AutorecoveringConnection) Connection, null);
+                    });
+            };
+            return channel;
         }
 
         protected virtual void Dispose(bool disposing)

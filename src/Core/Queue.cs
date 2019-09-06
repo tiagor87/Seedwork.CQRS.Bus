@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.Core
             IsAutoDelete = false;
         }
 
-        public QueueName Name { get; private set; }
+        public QueueName Name { get; }
         public Durability Durability { get; private set; }
         public bool IsAutoDelete { get; private set; }
         public IReadOnlyDictionary<string, object> Arguments => new ReadOnlyDictionary<string, object>(_arguments);
@@ -137,6 +137,17 @@ namespace Seedwork.CQRS.Bus.Core
         }
 
         /// <summary>
+        /// If messages expires is setup, send the message to another exchange and routing when expired. 
+        /// </summary>
+        /// <param name="exchange">Exchange to which messages will be republished if they are rejected or expire.</param>
+        /// <param name="routing">Optional replacement routing key to use when a message is dead-lettered. If this is not set, the message's original routing key will be used.</param>
+        /// <returns></returns>
+        public Queue SendExpiredMessagesTo(Exchange exchange, RoutingKey routing)
+        {
+            return SendExpiredMessagesTo(exchange.Name, routing);
+        }
+
+        /// <summary>
         /// Maximum number of priority levels for the queue to support;
         /// if not set, the queue will not support message priorities.
         /// </summary>
@@ -168,14 +179,22 @@ namespace Seedwork.CQRS.Bus.Core
             return this;
         }
 
-        internal void Declare(IModel channel)
+        protected internal void Declare(IModel channel)
         {
             channel.QueueDeclare(Name.Value, Durability.IsDurable, false, IsAutoDelete, _arguments);
         }
 
-        internal void Bind(IModel channel, ExchangeName exchangeName, RoutingKey routingKey)
+        protected internal void Bind(IModel channel, Exchange exchange, RoutingKey routingKey)
         {
-            channel.QueueBind(Name.Value, exchangeName.Value, routingKey.Value, _arguments);
+            channel.QueueBind(Name.Value, exchange.Name.Value, routingKey.Value, _arguments);
+        }
+
+        protected internal Queue CreateRetryQueue(TimeSpan ttl, Exchange targetExchange, RoutingKey targetRoutingKey)
+        {
+            return Create($"{Name.Value}-retry")
+                .WithDurability(Durability.Durable)
+                .MessagesExpiresIn(ttl)
+                .SendExpiredMessagesTo(targetExchange, targetRoutingKey);
         }
     }
 }

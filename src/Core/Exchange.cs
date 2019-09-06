@@ -91,7 +91,7 @@ namespace Seedwork.CQRS.Bus.Core
             return this;
         }
 
-        internal void Declare(IModel channel)
+        protected internal void Declare(IModel channel)
         {
             channel.ExchangeDeclare(Name.Value, Type.Value, Durability.IsDurable, IsAutoDelete, _arguments);
         }
