@@ -67,6 +67,35 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
+        public async Task GivenConnectionWhenSubscribeAndThrowAndMaxAttemptsAchievedShouldQueueOnFailedQueue()
+        {
+            var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
+            var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
+            var routingKey = RoutingKey.Create(queue.Name.Value);
+            var message = new TestMessage("notification", 1, 1);
+
+            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+
+            var @event = new AutoResetEvent(false);
+
+            _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, m) =>
+            {
+                Task.Run(() =>
+                {
+                    Thread.Sleep(TimeSpan.FromMilliseconds(500));
+                    @event.Set();
+                });
+                throw new Exception();
+            });
+
+            @event.WaitOne();
+
+            var failedQueue = Queue.Create($"{queue.Name.Value}-failed");
+
+            _connectionFixture.Connection.MessageCount(failedQueue).Should().Be(1);
+        }
+
+        [Fact]
         public async Task GivenConnectionWhenSubscribeAndThrowShouldRequeueOnRetryQueue()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
