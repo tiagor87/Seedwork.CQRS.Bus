@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
@@ -18,8 +19,10 @@ namespace Seedwork.CQRS.Bus.Core
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
         private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)> _consumers;
+        private readonly uint _maxTasks = 50;
         private readonly IBusSerializer _serializer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
+        private readonly List<Task> _tasks;
         private IConnection _connection;
         private bool _disposed;
 
@@ -31,6 +34,7 @@ namespace Seedwork.CQRS.Bus.Core
             _serviceScopeFactory = serviceScopeFactory;
             _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)>();
             _connectionFactory = connectionFactory;
+            _tasks = new List<Task>();
         }
 
         public BusConnection(BusConnectionString connectionString,
@@ -38,6 +42,7 @@ namespace Seedwork.CQRS.Bus.Core
             IServiceScopeFactory serviceScopeFactory) : this(GetConnectionFactory(connectionString.Value), serializer,
             serviceScopeFactory)
         {
+            _maxTasks = connectionString.MaxThreads;
         }
 
         public IConnection Connection
@@ -77,7 +82,13 @@ namespace Seedwork.CQRS.Bus.Core
 
             consumer.Received += (sender, args) =>
             {
-                Task.Run(async () =>
+                while (_tasks.Count == _maxTasks)
+                {
+                    _tasks.RemoveAll(x => x.IsCompleted);
+                    Thread.Sleep(100);
+                }
+
+                var task = Task.Run(async () =>
                 {
                     using (var scope = _serviceScopeFactory.CreateScope())
                     {
@@ -114,6 +125,7 @@ namespace Seedwork.CQRS.Bus.Core
                         }
                     }
                 });
+                _tasks.Add(task);
                 return Task.CompletedTask;
             };
 
@@ -121,22 +133,26 @@ namespace Seedwork.CQRS.Bus.Core
             _consumers.GetOrAdd(consumerTag, (channel, consumer));
         }
 
-        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
+        public Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {
-            await Policy.Handle<TimeoutException>()
+            var task = Policy.Handle<TimeoutException>()
                 .RetryForeverAsync()
-                .ExecuteAsync(async () =>
+                .ExecuteAsync(() =>
                 {
                     using (var channel = CreateChannel())
                     {
                         exchange.Declare(channel);
                         queue.Declare(channel);
                         queue.Bind(channel, exchange, routingKey);
-                        var (body, basicProperties) = await message.GetData(channel, _serializer);
+                        var (body, basicProperties) = message.GetData(channel, _serializer);
                         channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, basicProperties, body);
                         channel.Close();
                     }
+
+                    return Task.CompletedTask;
                 });
+            _tasks.Add(task);
+            return Task.CompletedTask;
         }
 
         public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
@@ -151,28 +167,33 @@ namespace Seedwork.CQRS.Bus.Core
             await PublishBatch(exchange, queue, routingKey, messages);
         }
 
-        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+        public Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<Message> messages)
         {
-            using (var channel = CreateChannel())
-            {
-                exchange.Declare(channel);
-                queue.Declare(channel);
-                queue.Bind(channel, exchange, routingKey);
-                var tasks = messages.Select(m => m.GetData(channel, _serializer)).ToList();
-
-                await Task.WhenAll(tasks);
-
-                var batch = channel.CreateBasicPublishBatch();
-                foreach (var task in tasks)
+            var task = Policy.Handle<TimeoutException>()
+                .RetryForeverAsync()
+                .ExecuteAsync(() =>
                 {
-                    var (body, properties) = task.Result;
-                    batch.Add(exchange.Name.Value, routingKey.Value, false, properties, body);
-                }
+                    using (var channel = CreateChannel())
+                    {
+                        exchange.Declare(channel);
+                        queue.Declare(channel);
+                        queue.Bind(channel, exchange, routingKey);
+                        var batch = channel.CreateBasicPublishBatch();
+                        foreach (var message in messages.ToList())
+                        {
+                            var (body, properties) = message.GetData(channel, _serializer);
+                            batch.Add(exchange.Name.Value, routingKey.Value, false, properties, body);
+                        }
 
-                batch.Publish();
-                channel.Close();
-            }
+                        batch.Publish();
+                        channel.Close();
+                    }
+
+                    return Task.CompletedTask;
+                });
+            _tasks.Add(task);
+            return Task.CompletedTask;
         }
 
         public async Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
@@ -234,6 +255,8 @@ namespace Seedwork.CQRS.Bus.Core
 
             if (disposing)
             {
+                Task.WaitAll(_tasks.ToArray());
+                _tasks.Clear();
                 foreach (var consumerGroup in _consumers)
                 {
                     var key = consumerGroup.Key;

@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -18,6 +17,11 @@ namespace Seedwork.CQRS.Bus.Core
         public object Data { get; }
         public int MaxAttempts { get; }
         public int AttemptCount { get; }
+
+        public bool CanRetry()
+        {
+            return MaxAttempts == 0 || AttemptCount < MaxAttempts;
+        }
 
         public static Message Create(object data, int maxAttempts)
         {
@@ -52,19 +56,14 @@ namespace Seedwork.CQRS.Bus.Core
             return new Message(data, (int) maxAttempts, ++attemptCount);
         }
 
-        protected internal async Task<(byte[], IBasicProperties)> GetData(IModel channel, IBusSerializer serializer)
+        protected internal (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
         {
-            var body = await serializer.Serialize(Data);
+            var body = serializer.Serialize(Data).GetAwaiter().GetResult();
             var basicProperties = channel.CreateBasicProperties();
             basicProperties.Headers = new Dictionary<string, object>();
             basicProperties.Headers.Add(nameof(AttemptCount), AttemptCount);
             basicProperties.Headers.Add(nameof(MaxAttempts), MaxAttempts);
             return (body, basicProperties);
-        }
-
-        public bool CanRetry()
-        {
-            return MaxAttempts == 0 || AttemptCount < MaxAttempts;
         }
     }
 }
