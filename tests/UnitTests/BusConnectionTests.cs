@@ -127,7 +127,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                     exchange.Name.Value,
                     routingKey.Value,
                     false,
-                    null,
+                    _basicPropertiesMock.Object,
                     body), Times.Once());
             _channelMock.Verify(x => x.Close(), Times.Once());
             _channelMock.Verify(x => x.Dispose(), Times.Once());

@@ -133,9 +133,9 @@ namespace Seedwork.CQRS.Bus.Core
             _consumers.GetOrAdd(consumerTag, (channel, consumer));
         }
 
-        public Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
+        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {
-            var task = Policy.Handle<TimeoutException>()
+            await Policy.Handle<TimeoutException>()
                 .RetryForeverAsync()
                 .ExecuteAsync(() =>
                 {
@@ -151,8 +151,6 @@ namespace Seedwork.CQRS.Bus.Core
 
                     return Task.CompletedTask;
                 });
-            _tasks.Add(task);
-            return Task.CompletedTask;
         }
 
         public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
@@ -167,10 +165,10 @@ namespace Seedwork.CQRS.Bus.Core
             await PublishBatch(exchange, queue, routingKey, messages);
         }
 
-        public Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<Message> messages)
         {
-            var task = Policy.Handle<TimeoutException>()
+            await Policy.Handle<TimeoutException>()
                 .RetryForeverAsync()
                 .ExecuteAsync(() =>
                 {
@@ -192,19 +190,25 @@ namespace Seedwork.CQRS.Bus.Core
 
                     return Task.CompletedTask;
                 });
-            _tasks.Add(task);
-            return Task.CompletedTask;
         }
 
         public async Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
         {
-            var body = await _serializer.Serialize(notification);
-            using (var channel = CreateChannel())
-            {
-                exchange.Declare(channel);
-                channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, null, body);
-                channel.Close();
-            }
+            await Policy.Handle<TimeoutException>()
+                .RetryForeverAsync()
+                .ExecuteAsync(() =>
+                {
+                    var message = Message.Create(notification, 5);
+                    using (var channel = CreateChannel())
+                    {
+                        exchange.Declare(channel);
+                        var (body, basicProperties) = message.GetData(channel, _serializer);
+                        channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, basicProperties, body);
+                        channel.Close();
+                    }
+
+                    return Task.CompletedTask;
+                });
         }
 
         ~BusConnection()
