@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using BufferList;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Polly;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -13,18 +14,11 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public class BusConnection : IDisposable
     {
-        public const int PublisherBufferSize = 1000;
-        public const int PublisherBufferTtlInSeconds = 5;
-        public const int ConnectionMaxRetry = 10;
-        public const int ConnectionRetryDelayInMs = 500;
-        public const int ConsumerMaxParallelTasks = 500;
-        public const int MessageMaxRetry = 5;
-        public const int PublishMaxRetry = 5;
-        public const int PublishRetryDelayInMs = 100;
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
         private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)> _consumers;
         private readonly IBusLogger _logger;
+        private readonly IOptions<BusConnectionOptions> _options;
         private readonly BufferList<BatchItem> _publisherBuffer;
         private readonly IBusSerializer _serializer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
@@ -35,23 +29,27 @@ namespace Seedwork.CQRS.Bus.Core
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
-            IBusLogger logger)
+            IBusLogger logger,
+            IOptions<BusConnectionOptions> options)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
+            _options = options;
             _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)>();
             _connectionFactory = connectionFactory;
             _publisherBuffer =
-                new BufferList<BatchItem>(PublisherBufferSize, TimeSpan.FromSeconds(PublisherBufferTtlInSeconds));
+                new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
+                    TimeSpan.FromMilliseconds(_options.Value.PublisherBufferTtlInMilliseconds));
             _publisherBuffer.Cleared += PublisherBufferOnCleared;
         }
 
         public BusConnection(BusConnectionString connectionString,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
-            IBusLogger logger) : this(GetConnectionFactory(connectionString.Value), serializer,
-            serviceScopeFactory, logger)
+            IBusLogger logger,
+            IOptions<BusConnectionOptions> options) : this(GetConnectionFactory(connectionString.Value), serializer,
+            serviceScopeFactory, logger, options)
         {
         }
 
@@ -67,8 +65,8 @@ namespace Seedwork.CQRS.Bus.Core
                 lock (_sync)
                 {
                     return _publisherConnection ?? (_publisherConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(ConnectionRetryDelayInMs))
+                               .WaitAndRetry(_options.Value.ConnectionMaxRetry,
+                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
                                .Execute(() => _connectionFactory.CreateConnection()));
                 }
             }
@@ -86,8 +84,9 @@ namespace Seedwork.CQRS.Bus.Core
                 lock (_sync)
                 {
                     return _consumerConnection ?? (_consumerConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(ConnectionRetryDelayInMs))
+                               .WaitAndRetry(
+                                   _options.Value.ConnectionMaxRetry,
+                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
                                .Execute(() => _connectionFactory.CreateConnection()));
                 }
             }
@@ -110,7 +109,7 @@ namespace Seedwork.CQRS.Bus.Core
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            var tasks = new List<Task>(ConsumerMaxParallelTasks);
+            var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += async (sender, args) =>
             {
                 try
@@ -170,13 +169,13 @@ namespace Seedwork.CQRS.Bus.Core
 
         public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
         {
-            await Publish(exchange, queue, routingKey, Message.Create(data, MessageMaxRetry));
+            await Publish(exchange, queue, routingKey, Message.Create(data, _options.Value.MessageMaxRetry));
         }
 
         public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<object> notification)
         {
-            var messages = notification.Select(x => Message.Create(x, MessageMaxRetry));
+            var messages = notification.Select(x => Message.Create(x, _options.Value.MessageMaxRetry));
             await PublishBatch(exchange, queue, routingKey, messages);
         }
 
@@ -195,7 +194,7 @@ namespace Seedwork.CQRS.Bus.Core
         public Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
         {
             _publisherBuffer.Add(new BatchItem(exchange, null, routingKey,
-                Message.Create(notification, MessageMaxRetry)));
+                Message.Create(notification, _options.Value.MessageMaxRetry)));
             return Task.CompletedTask;
         }
 
@@ -221,7 +220,9 @@ namespace Seedwork.CQRS.Bus.Core
         {
             Policy
                 .Handle<Exception>()
-                .WaitAndRetry(PublishMaxRetry, _ => TimeSpan.FromMilliseconds(PublishRetryDelayInMs),
+                .WaitAndRetry(
+                    _options.Value.PublishMaxRetry,
+                    _ => TimeSpan.FromMilliseconds(_options.Value.PublishRetryDelayInMilliseconds),
                     (exception, span) =>
                     {
                         _logger.WriteException("Publisher", exception,

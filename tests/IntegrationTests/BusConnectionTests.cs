@@ -31,7 +31,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 notification
             });
 
-            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+            Thread.Sleep(
+                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
 
             _connectionFixture.Connection.MessageCount(queue).Should().Be(2);
         }
@@ -46,7 +47,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             const string notification = "Notification message";
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
-            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+            Thread.Sleep(
+                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
 
             _connectionFixture.Connection.MessageCount(queue).Should().Be(1);
         }
@@ -63,7 +65,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
 
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
-            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+            Thread.Sleep(
+                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
 
             var responseMessage = _connectionFixture.Connection.GetMessage(queue);
             responseMessage.Should().NotBeNull();
@@ -96,7 +99,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
 
             @event.WaitOne();
 
-            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+            Thread.Sleep(
+                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
 
             var failedQueue = Queue.Create($"{queue.Name.Value}-failed");
 
@@ -127,7 +131,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
 
             @event.WaitOne();
 
-            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+            Thread.Sleep(
+                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
 
             var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
 

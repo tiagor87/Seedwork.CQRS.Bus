@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Moq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -29,6 +30,13 @@ namespace Seedwork.CQRS.Bus.UnitTests
             _loggerMock = new Mock<IBusLogger>();
             _headersMock = new Mock<IDictionary<string, object>>();
             _publishBatchMock = new Mock<IBasicPublishBatch>();
+            _optionsMock = new Mock<IOptions<BusConnectionOptions>>();
+            _optionsMock.SetupGet(x => x.Value)
+                .Returns(new BusConnectionOptions
+                {
+                    PublisherBufferTtlInMilliseconds = 1
+                })
+                .Verifiable();
             _channelMock.Setup(x => x.CreateBasicPublishBatch())
                 .Returns(_publishBatchMock.Object)
                 .Verifiable();
@@ -48,7 +56,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
                 _serviceScopeFactoryMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _optionsMock.Object);
             _serviceScopeFactoryMock.Setup(x => x.CreateScope())
                 .Returns(_scopeMock.Object)
                 .Verifiable();
@@ -69,6 +78,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         private readonly Mock<IDictionary<string, object>> _headersMock;
         private readonly Mock<IBusLogger> _loggerMock;
         private readonly Mock<IBasicPublishBatch> _publishBatchMock;
+        private readonly Mock<IOptions<BusConnectionOptions>> _optionsMock;
 
         [Fact]
         public void GivenConnectionWhenCreateShouldNotTryToConnect()
@@ -77,7 +87,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
                 _serviceScopeFactoryMock.Object,
-                _loggerMock.Object);
+                _loggerMock.Object,
+                _optionsMock.Object);
 
             busConnection.Should().NotBeNull();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Never());

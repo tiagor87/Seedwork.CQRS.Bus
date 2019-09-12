@@ -18,6 +18,11 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
     {
         private readonly ServiceProvider _serviceProvider;
 
+        internal BusConnectionOptions BusOptions = new BusConnectionOptions
+        {
+            PublisherBufferTtlInMilliseconds = 1
+        };
+
         public BusConnectionFixture()
         {
             _serviceProvider = new ServiceCollection()
@@ -25,6 +30,17 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 .AddSingleton<IBusSerializer, BusSerializer>()
                 .AddSingleton<IBusLogger, BusLogger>()
                 .AddSingleton<BusConnection>()
+                .Configure<BusConnectionOptions>(options =>
+                {
+                    options.PublisherBufferSize = BusOptions.PublisherBufferSize;
+                    options.PublisherBufferTtlInMilliseconds = BusOptions.PublisherBufferTtlInMilliseconds;
+                    options.ConnectionMaxRetry = BusOptions.ConnectionMaxRetry;
+                    options.ConnectionRetryDelayInMilliseconds = BusOptions.ConnectionRetryDelayInMilliseconds;
+                    options.ConsumerMaxParallelTasks = BusOptions.ConsumerMaxParallelTasks;
+                    options.MessageMaxRetry = BusOptions.MessageMaxRetry;
+                    options.PublishMaxRetry = BusOptions.PublishMaxRetry;
+                    options.PublishRetryDelayInMilliseconds = BusOptions.PublishRetryDelayInMilliseconds;
+                })
                 .BuildServiceProvider();
         }
 
