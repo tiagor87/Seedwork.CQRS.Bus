@@ -1,6 +1,6 @@
 namespace Seedwork.CQRS.Bus.Core
 {
-    internal class BatchItem
+    public class BatchItem
     {
         public BatchItem(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {

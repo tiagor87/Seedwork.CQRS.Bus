@@ -12,6 +12,10 @@ using RabbitMQ.Client.Events;
 
 namespace Seedwork.CQRS.Bus.Core
 {
+    public delegate void PublishSuccessed(IEnumerable<BatchItem> items);
+
+    public delegate void PublishFailed(IEnumerable<BatchItem> items, Exception exception);
+
     public class BusConnection : IDisposable
     {
         private static volatile object _sync = new object();
@@ -97,6 +101,9 @@ namespace Seedwork.CQRS.Bus.Core
             Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        public event PublishSuccessed PublishSuccessed;
+        public event PublishFailed PublishFailed;
 
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
             Func<IServiceScope, T, Task> action)
@@ -218,46 +225,56 @@ namespace Seedwork.CQRS.Bus.Core
 
         private void PublisherBufferOnCleared(IEnumerable<BatchItem> removedItems)
         {
-            Policy
-                .Handle<Exception>()
-                .WaitAndRetry(
-                    _options.Value.PublishMaxRetry,
-                    _ => TimeSpan.FromMilliseconds(_options.Value.PublishRetryDelayInMilliseconds),
-                    (exception, span) =>
-                    {
-                        _logger.WriteException("Publisher", exception,
-                            new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
-                    })
-                .Execute(() =>
-                {
-                    using (var channel = PublisherConnection.CreateModel())
-                    {
-                        var batch = channel.CreateBasicPublishBatch();
-                        try
+            var items = removedItems.ToList();
+            try
+            {
+                Policy
+                    .Handle<Exception>()
+                    .WaitAndRetry(
+                        _options.Value.PublishMaxRetry,
+                        _ => TimeSpan.FromMilliseconds(_options.Value.PublishRetryDelayInMilliseconds),
+                        (exception, span) =>
                         {
-                            foreach (var group in removedItems.GroupBy(x => (x.Exchange, x.Queue, x.RoutingKey)))
+                            _logger.WriteException("Publisher", exception,
+                                new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
+                        })
+                    .Execute(() =>
+                    {
+                        using (var channel = PublisherConnection.CreateModel())
+                        {
+                            var batch = channel.CreateBasicPublishBatch();
+                            try
                             {
-                                var (exchange, queue, routingKey) = group.Key;
-                                exchange.Declare(channel);
-                                queue?.Declare(channel);
-                                queue?.Bind(channel, exchange, routingKey);
-                                foreach (var item in group)
+                                foreach (var group in items.GroupBy(x => (x.Exchange, x.Queue, x.RoutingKey)))
                                 {
-                                    var (body, basicProperties) =
-                                        item.Message.GetData(channel, _serializer);
-                                    batch.Add(exchange.Name.Value, routingKey.Value, false,
-                                        basicProperties, body);
+                                    var (exchange, queue, routingKey) = group.Key;
+                                    exchange.Declare(channel);
+                                    queue?.Declare(channel);
+                                    queue?.Bind(channel, exchange, routingKey);
+                                    foreach (var item in group)
+                                    {
+                                        var (body, basicProperties) =
+                                            item.Message.GetData(channel, _serializer);
+                                        batch.Add(exchange.Name.Value, routingKey.Value, false,
+                                            basicProperties, body);
+                                    }
                                 }
-                            }
 
-                            batch.Publish();
+                                batch.Publish();
+                            }
+                            finally
+                            {
+                                channel.Close();
+                            }
                         }
-                        finally
-                        {
-                            channel.Close();
-                        }
-                    }
-                });
+                    });
+
+                PublishSuccessed?.Invoke(items);
+            }
+            catch (Exception ex)
+            {
+                PublishFailed?.Invoke(items, ex);
+            }
         }
 
         protected virtual void Dispose(bool disposing)

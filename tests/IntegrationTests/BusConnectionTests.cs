@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
@@ -25,14 +26,17 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 .WithAutoDelete();
             var routingKey = RoutingKey.Create(queue.Name.Value);
             const string notification = "Notification message";
+
+            var autoResetEvent = new AutoResetEvent(false);
+            _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
+
             await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, new[]
             {
                 notification,
                 notification
             });
 
-            Thread.Sleep(
-                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
+            autoResetEvent.WaitOne();
 
             _connectionFixture.Connection.MessageCount(queue).Should().Be(2);
         }
@@ -45,10 +49,13 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 .WithAutoDelete();
             var routingKey = RoutingKey.Create(queue.Name.Value);
             const string notification = "Notification message";
+
+            var autoResetEvent = new AutoResetEvent(false);
+            _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
+
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
-            Thread.Sleep(
-                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
+            autoResetEvent.WaitOne();
 
             _connectionFixture.Connection.MessageCount(queue).Should().Be(1);
         }
@@ -63,10 +70,12 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             object data = "Notification message";
             var message = Message.Create(data, 10);
 
+            var autoResetEvent = new AutoResetEvent(false);
+            _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
+
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
-            Thread.Sleep(
-                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
+            autoResetEvent.WaitOne();
 
             var responseMessage = _connectionFixture.Connection.GetMessage(queue);
             responseMessage.Should().NotBeNull();
@@ -83,24 +92,27 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var routingKey = RoutingKey.Create(queue.Name.Value);
             var message = new TestMessage("notification", 1, 1);
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+            var autoResetEvent = new AutoResetEvent(false);
 
-            var @event = new AutoResetEvent(false);
+            _connectionFixture.Connection.PublishSuccessed += items =>
+            {
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-failed")))
+                {
+                    autoResetEvent.Set();
+                }
+            };
+
+            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
             _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, m) =>
             {
-                Task.Run(() =>
-                {
-                    Thread.Sleep(TimeSpan.FromMilliseconds(500));
-                    @event.Set();
-                });
+                autoResetEvent.Set();
                 throw new Exception();
             });
 
-            @event.WaitOne();
+            autoResetEvent.WaitOne(); // Wait for subscribe to execute.
 
-            Thread.Sleep(
-                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
+            autoResetEvent.WaitOne(); // Wait for failed message publishing.
 
             var failedQueue = Queue.Create($"{queue.Name.Value}-failed");
 
@@ -115,24 +127,27 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var routingKey = RoutingKey.Create(queue.Name.Value);
             const string notification = "Notification message";
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+            var autoResetEvent = new AutoResetEvent(false);
 
-            var @event = new AutoResetEvent(false);
+            _connectionFixture.Connection.PublishSuccessed += items =>
+            {
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry")))
+                {
+                    autoResetEvent.Set();
+                }
+            };
+
+            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
             _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
             {
-                Task.Run(() =>
-                {
-                    Thread.Sleep(TimeSpan.FromMilliseconds(500));
-                    @event.Set();
-                });
+                autoResetEvent.Set();
                 throw new Exception();
             });
 
-            @event.WaitOne();
+            autoResetEvent.WaitOne(); // Wait for subscribe to execute.
 
-            Thread.Sleep(
-                TimeSpan.FromMilliseconds(_connectionFixture.BusOptions.PublisherBufferTtlInMilliseconds + 250));
+            autoResetEvent.WaitOne(); // Wait for retry message publishing.
 
             var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
 
@@ -153,18 +168,18 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             IServiceScope callbackScope = null;
             string callbackMessage = null;
 
-            var @event = new AutoResetEvent(false);
+            var autoResetEvent = new AutoResetEvent(false);
 
             _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
             {
                 callbackScope = scope;
                 callbackMessage = message;
-                @event.Set();
+                autoResetEvent.Set();
 
                 return Task.CompletedTask;
             });
 
-            @event.WaitOne();
+            autoResetEvent.WaitOne();
 
             callbackScope.Should().NotBeNull();
             callbackMessage.Should().Be(notification);

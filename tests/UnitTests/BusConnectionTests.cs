@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -92,6 +93,51 @@ namespace Seedwork.CQRS.Bus.UnitTests
 
             busConnection.Should().NotBeNull();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Never());
+        }
+
+        [Fact]
+        public async Task
+            GivenConnectionWhenPublishFailsShouldExecuteFailedCallback()
+        {
+            const string notification = "test";
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+
+            var headersMock = new Mock<IDictionary<string, object>>();
+
+            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+                .ReturnsAsync(body)
+                .Verifiable();
+            _basicPropertiesMock.Setup(x => x.Headers)
+                .Returns(headersMock.Object)
+                .Verifiable();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Throws(new Exception())
+                .Verifiable();
+
+            Exception callbackException = null;
+            List<BatchItem> callbackItems = null;
+
+            _busConnection.PublishFailed += (items, ex) =>
+            {
+                callbackItems = items.ToList();
+                callbackException = ex;
+                autoResetEvent.Set();
+            };
+            await _busConnection.Publish(exchange, queue, routingKey, notification);
+
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
+
+            callbackItems.Should().NotBeNull();
+            callbackItems.Should().NotBeEmpty();
+            callbackException.Should().NotBeNull();
         }
 
         [Fact]
@@ -255,6 +301,44 @@ namespace Seedwork.CQRS.Bus.UnitTests
                     body), Times.Once());
             _channelMock.Verify(x => x.Close(), Times.Once());
             _channelMock.Verify(x => x.Dispose(), Times.Once());
+        }
+
+        [Fact]
+        public async Task
+            GivenConnectionWhenPublishSuccessedShouldExecuteSuccessedCallback()
+        {
+            const string notification = "test";
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+
+            var headersMock = new Mock<IDictionary<string, object>>();
+
+            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+                .ReturnsAsync(body)
+                .Verifiable();
+            _basicPropertiesMock.Setup(x => x.Headers)
+                .Returns(headersMock.Object)
+                .Verifiable();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            List<BatchItem> callbackItems = null;
+
+            _busConnection.PublishSuccessed += items =>
+            {
+                callbackItems = items.ToList();
+                autoResetEvent.Set();
+            };
+            await _busConnection.Publish(exchange, queue, routingKey, notification);
+
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
+
+            callbackItems.Should().NotBeNull();
+            callbackItems.Should().NotBeEmpty();
         }
 
         [Fact]
