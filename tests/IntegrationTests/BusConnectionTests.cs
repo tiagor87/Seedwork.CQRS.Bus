@@ -19,6 +19,15 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         private readonly BusConnectionFixture _connectionFixture;
 
         [Fact]
+        public void GivenConnectionWhenDisposeTwiceShouldNotThrow()
+        {
+            _connectionFixture.Connection.Dispose();
+            _connectionFixture.Connection
+                .Invoking(x => x.Dispose())
+                .Should().NotThrow();
+        }
+
+        [Fact]
         public async Task GivenConnectionWhenPublishBatchShouldQueueHaveBatchLength()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);

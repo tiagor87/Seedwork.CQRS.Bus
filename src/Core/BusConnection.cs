@@ -297,8 +297,11 @@ namespace Seedwork.CQRS.Bus.Core
                     channel.Dispose();
                 }
 
-                _consumerConnection.Close();
-                _consumerConnection.Dispose();
+                _publisherBuffer.Clear();
+                _consumerConnection?.Close();
+                _consumerConnection?.Dispose();
+                _publisherConnection?.Close();
+                _publisherConnection?.Dispose();
             }
 
             _disposed = true;
