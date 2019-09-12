@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using BufferList;
 using Microsoft.Extensions.DependencyInjection;
@@ -119,6 +120,16 @@ namespace Seedwork.CQRS.Bus.Core
             var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += async (sender, args) =>
             {
+                while (tasks.Count == tasks.Capacity)
+                {
+                    lock (_sync)
+                    {
+                        tasks.RemoveAll(x => x.IsCompleted);
+                    }
+
+                    Thread.Sleep(100);
+                }
+
                 try
                 {
                     var task = Task.Run(async () =>
@@ -154,7 +165,10 @@ namespace Seedwork.CQRS.Bus.Core
                             }
                         }
                     });
-                    tasks.Add(task);
+                    lock (_sync)
+                    {
+                        tasks.Add(task);
+                    }
                 }
                 catch (Exception ex)
                 {
