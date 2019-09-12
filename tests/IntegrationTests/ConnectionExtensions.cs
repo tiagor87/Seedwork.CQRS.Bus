@@ -6,7 +6,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
     {
         public static uint MessageCount(this BusConnection connection, Queue queue)
         {
-            using (var channel = connection.Connection.CreateModel())
+            using (var channel = connection.ConsumerConnection.CreateModel())
             {
                 var count = channel.MessageCount(queue.Name.Value);
                 channel.Close();
@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
 
         public static Message GetMessage(this BusConnection connection, Queue queue)
         {
-            using (var channel = connection.Connection.CreateModel())
+            using (var channel = connection.ConsumerConnection.CreateModel())
             {
                 var result = channel.BasicGet(queue.Name.Value, false);
                 var serializer = new BusSerializer();

@@ -26,7 +26,12 @@ namespace Seedwork.CQRS.Bus.UnitTests
             _scopeMock = new Mock<IServiceScope>();
             _serviceProviderMock = new Mock<IServiceProvider>();
             _basicPropertiesMock = new Mock<IBasicProperties>();
+            _loggerMock = new Mock<IBusLogger>();
             _headersMock = new Mock<IDictionary<string, object>>();
+            _publishBatchMock = new Mock<IBasicPublishBatch>();
+            _channelMock.Setup(x => x.CreateBasicPublishBatch())
+                .Returns(_publishBatchMock.Object)
+                .Verifiable();
             _basicPropertiesMock.SetupGet(x => x.Headers)
                 .Returns(_headersMock.Object)
                 .Verifiable();
@@ -42,7 +47,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
             _busConnection = new BusConnection(
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
-                _serviceScopeFactoryMock.Object);
+                _serviceScopeFactoryMock.Object,
+                _loggerMock.Object);
             _serviceScopeFactoryMock.Setup(x => x.CreateScope())
                 .Returns(_scopeMock.Object)
                 .Verifiable();
@@ -61,6 +67,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
         private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<IBasicProperties> _basicPropertiesMock;
         private readonly Mock<IDictionary<string, object>> _headersMock;
+        private readonly Mock<IBusLogger> _loggerMock;
+        private readonly Mock<IBasicPublishBatch> _publishBatchMock;
 
         [Fact]
         public void GivenConnectionWhenCreateShouldNotTryToConnect()
@@ -68,7 +76,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
             var busConnection = new BusConnection(
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
-                _serviceScopeFactoryMock.Object);
+                _serviceScopeFactoryMock.Object,
+                _loggerMock.Object);
 
             busConnection.Should().NotBeNull();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Never());
@@ -93,8 +102,17 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Returns(headersMock.Object)
                 .Verifiable();
 
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
             await _busConnection.Publish(exchange, queue, routingKey, notification);
 
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.CreateBasicProperties(), Times.Once());
             _basicPropertiesMock.VerifySet(x => x.Headers = new Dictionary<string, object>());
             headersMock.Verify(x => x.Add(nameof(Message.MaxAttempts), It.IsAny<object>()));
@@ -112,8 +130,17 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .ReturnsAsync(body)
                 .Verifiable();
 
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
             await _busConnection.Publish(exchange, routingKey, notification);
 
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
             _connectionMock.Verify(x => x.CreateModel(), Times.Once());
             _channelMock.Verify(x => x.ExchangeDeclare(
@@ -122,13 +149,6 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 exchange.Durability.IsDurable,
                 exchange.IsAutoDelete,
                 It.IsAny<IDictionary<string, object>>()), Times.Once());
-            _channelMock.Verify(
-                x => x.BasicPublish(
-                    exchange.Name.Value,
-                    routingKey.Value,
-                    false,
-                    _basicPropertiesMock.Object,
-                    body), Times.Once());
             _channelMock.Verify(x => x.Close(), Times.Once());
             _channelMock.Verify(x => x.Dispose(), Times.Once());
         }
@@ -152,8 +172,17 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Returns(headersMock.Object)
                 .Verifiable();
 
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
             await _busConnection.Publish(exchange, queue, routingKey, notification);
 
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
             _connectionMock.Verify(x => x.CreateModel(), Times.Once());
             _channelMock.Verify(x => x.ExchangeDeclare(
@@ -194,10 +223,20 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Returns(headersMock.Object)
                 .Verifiable();
 
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
             await _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            _channelMock.Verify(
-                x => x.BasicPublish(
+            autoResetEvent.WaitOne();
+
+            _publishBatchMock.VerifyAll();
+
+            _publishBatchMock.Verify(
+                x => x.Add(
                     exchange.Name.Value,
                     routingKey.Value,
                     false,
@@ -303,8 +342,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 })
                 .Returns(Guid.NewGuid().ToString());
 
-            _channelMock.Setup(x => x.BasicNack(deliveryTag, false, false))
-                .Callback((ulong tag, bool multiple, bool requeue) => autoResetEvent.Set())
+            _channelMock.Setup(x => x.BasicAck(deliveryTag, false))
+                .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
                 .Verifiable();
 
             _busConnection.Subscribe<string>(
@@ -316,7 +355,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
 
             autoResetEvent.WaitOne();
 
-            _channelMock.Verify(x => x.BasicNack(deliveryTag, false, false), Times.Once());
+            _channelMock.Verify(x => x.BasicAck(deliveryTag, false), Times.Once());
         }
 
         [Fact]
@@ -361,8 +400,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 })
                 .Returns(Guid.NewGuid().ToString());
 
-            _channelMock.Setup(x => x.BasicNack(deliveryTag, false, false))
-                .Callback((ulong tag, bool multiple, bool requeue) => autoResetEvent.Set())
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
             _busConnection.Subscribe<string>(
@@ -374,13 +413,14 @@ namespace Seedwork.CQRS.Bus.UnitTests
 
             autoResetEvent.WaitOne();
 
+            _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.QueueDeclare(
                 It.Is((string y) => y.EndsWith("-retry")),
                 true,
                 false,
                 false,
                 It.IsAny<IDictionary<string, object>>()), Times.Once());
-            _channelMock.Verify(x => x.BasicPublish(
+            _publishBatchMock.Verify(x => x.Add(
                 exchange.Name.Value,
                 It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry")),
                 false,
@@ -397,13 +437,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
             const ushort deliveryTag = 1;
 
-            var loggerMock = new Mock<IBusLogger>();
-
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
                 .ReturnsAsync("test")
-                .Verifiable();
-            _serviceProviderMock.Setup(x => x.GetService(typeof(IBusLogger)))
-                .Returns(loggerMock.Object)
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -430,8 +465,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 })
                 .Returns(Guid.NewGuid().ToString());
 
-            _channelMock.Setup(x => x.BasicNack(deliveryTag, false, false))
-                .Callback((ulong tag, bool multiple, bool requeue) => autoResetEvent.Set())
+            _channelMock.Setup(x => x.BasicAck(deliveryTag, false))
+                .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
                 .Verifiable();
 
             _busConnection.Subscribe<string>(
@@ -443,7 +478,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
 
             autoResetEvent.WaitOne();
 
-            loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
+            _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
                 It.IsAny<KeyValuePair<string, object>[]>()));
         }
     }

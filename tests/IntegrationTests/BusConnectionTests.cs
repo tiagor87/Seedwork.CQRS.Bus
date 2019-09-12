@@ -31,6 +31,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 notification
             });
 
+            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+
             _connectionFixture.Connection.MessageCount(queue).Should().Be(2);
         }
 
@@ -43,6 +45,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var routingKey = RoutingKey.Create(queue.Name.Value);
             const string notification = "Notification message";
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+
+            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
 
             _connectionFixture.Connection.MessageCount(queue).Should().Be(1);
         }
@@ -58,6 +62,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var message = Message.Create(data, 10);
 
             await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+
+            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
 
             var responseMessage = _connectionFixture.Connection.GetMessage(queue);
             responseMessage.Should().NotBeNull();
@@ -90,6 +96,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
 
             @event.WaitOne();
 
+            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
+
             var failedQueue = Queue.Create($"{queue.Name.Value}-failed");
 
             _connectionFixture.Connection.MessageCount(failedQueue).Should().Be(1);
@@ -118,6 +126,8 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             });
 
             @event.WaitOne();
+
+            Thread.Sleep(TimeSpan.FromSeconds(BusConnection.PublisherBufferTtlInSeconds + 1));
 
             var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
 

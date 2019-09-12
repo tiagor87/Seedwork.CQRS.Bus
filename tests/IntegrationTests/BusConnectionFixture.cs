@@ -1,9 +1,19 @@
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Seedwork.CQRS.Bus.Core;
 
 namespace Seedwork.CQRS.Bus.IntegrationTests
 {
+    class BusLogger : IBusLogger
+    {
+        public Task WriteException(string name, Exception exception, params KeyValuePair<string, object>[] properties)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
     public class BusConnectionFixture : IDisposable
     {
         private readonly ServiceProvider _serviceProvider;
@@ -13,6 +23,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             _serviceProvider = new ServiceCollection()
                 .AddSingleton(BusConnectionString.Create("amqp://guest:guest@localhost/"))
                 .AddSingleton<IBusSerializer, BusSerializer>()
+                .AddSingleton<IBusLogger, BusLogger>()
                 .AddSingleton<BusConnection>()
                 .BuildServiceProvider();
         }

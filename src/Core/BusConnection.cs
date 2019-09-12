@@ -2,62 +2,92 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
+using BufferList;
 using Microsoft.Extensions.DependencyInjection;
 using Polly;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
-using RabbitMQ.Client.Framing.Impl;
-using RabbitMQ.Client.Impl;
 
 namespace Seedwork.CQRS.Bus.Core
 {
     public class BusConnection : IDisposable
     {
+        public const int PublisherBufferSize = 1000;
+        public const int PublisherBufferTtlInSeconds = 5;
+        public const int ConnectionMaxRetry = 10;
+        public const int ConnectionRetryDelayInMs = 500;
+        public const int ConsumerMaxParallelTasks = 500;
+        public const int MessageMaxRetry = 5;
+        public const int PublishMaxRetry = 5;
+        public const int PublishRetryDelayInMs = 100;
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)> _consumers;
-        private readonly uint _maxTasks = 50;
+        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)> _consumers;
+        private readonly IBusLogger _logger;
+        private readonly BufferList<BatchItem> _publisherBuffer;
         private readonly IBusSerializer _serializer;
         private readonly IServiceScopeFactory _serviceScopeFactory;
-        private readonly List<Task> _tasks;
-        private IConnection _connection;
+        private IConnection _consumerConnection;
         private bool _disposed;
+        private IConnection _publisherConnection;
 
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
-            IServiceScopeFactory serviceScopeFactory)
+            IServiceScopeFactory serviceScopeFactory,
+            IBusLogger logger)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
-            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer)>();
+            _logger = logger;
+            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)>();
             _connectionFactory = connectionFactory;
-            _tasks = new List<Task>();
+            _publisherBuffer =
+                new BufferList<BatchItem>(PublisherBufferSize, TimeSpan.FromSeconds(PublisherBufferTtlInSeconds));
+            _publisherBuffer.Cleared += PublisherBufferOnCleared;
         }
 
         public BusConnection(BusConnectionString connectionString,
             IBusSerializer serializer,
-            IServiceScopeFactory serviceScopeFactory) : this(GetConnectionFactory(connectionString.Value), serializer,
-            serviceScopeFactory)
+            IServiceScopeFactory serviceScopeFactory,
+            IBusLogger logger) : this(GetConnectionFactory(connectionString.Value), serializer,
+            serviceScopeFactory, logger)
         {
-            _maxTasks = connectionString.MaxThreads;
         }
 
-        public IConnection Connection
+        public IConnection PublisherConnection
         {
             get
             {
-                if (_connection != null)
+                if (_publisherConnection != null)
                 {
-                    return _connection;
+                    return _publisherConnection;
                 }
 
                 lock (_sync)
                 {
-                    return _connection ?? (_connection = Policy.Handle<BrokerUnreachableException>()
-                               .RetryForever()
+                    return _publisherConnection ?? (_publisherConnection = Policy.Handle<Exception>()
+                               .WaitAndRetry(ConnectionMaxRetry,
+                                   _ => TimeSpan.FromMilliseconds(ConnectionRetryDelayInMs))
+                               .Execute(() => _connectionFactory.CreateConnection()));
+                }
+            }
+        }
+
+        public IConnection ConsumerConnection
+        {
+            get
+            {
+                if (_consumerConnection != null)
+                {
+                    return _consumerConnection;
+                }
+
+                lock (_sync)
+                {
+                    return _consumerConnection ?? (_consumerConnection = Policy.Handle<Exception>()
+                               .WaitAndRetry(ConnectionMaxRetry,
+                                   _ => TimeSpan.FromMilliseconds(ConnectionRetryDelayInMs))
                                .Execute(() => _connectionFactory.CreateConnection()));
                 }
             }
@@ -72,7 +102,7 @@ namespace Seedwork.CQRS.Bus.Core
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
             Func<IServiceScope, T, Task> action)
         {
-            var channel = CreateChannel();
+            var channel = ConsumerConnection.CreateModel();
             channel.BasicQos(0, prefetchCount, false);
             exchange.Declare(channel);
             queue.Declare(channel);
@@ -80,135 +110,93 @@ namespace Seedwork.CQRS.Bus.Core
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            consumer.Received += (sender, args) =>
+            var tasks = new List<Task>(ConsumerMaxParallelTasks);
+            consumer.Received += async (sender, args) =>
             {
-                while (_tasks.Count == _maxTasks)
+                try
                 {
-                    _tasks.RemoveAll(x => x.IsCompleted);
-                    Thread.Sleep(100);
-                }
-
-                var task = Task.Run(async () =>
-                {
-                    using (var scope = _serviceScopeFactory.CreateScope())
+                    var task = Task.Run(async () =>
                     {
                         var message = Message.Create<T>(_serializer, args);
-                        try
+                        using (var scope = _serviceScopeFactory.CreateScope())
                         {
-                            await action.Invoke(scope, (T) message.Data);
-                            channel.BasicAck(args.DeliveryTag, false);
+                            try
+                            {
+                                await action.Invoke(scope, (T) message.Data);
+                                channel.BasicAck(args.DeliveryTag, false);
+                            }
+                            catch (Exception exception)
+                            {
+                                if (message.CanRetry())
+                                {
+                                    var retryQueue = queue.CreateRetryQueue(TimeSpan.FromMinutes(1), exchange,
+                                        routingKey);
+                                    await Publish(exchange, retryQueue, RoutingKey.Create(retryQueue.Name.Value),
+                                        message);
+                                }
+                                else
+                                {
+                                    var failedQueue = queue.CreateFailedQueue();
+                                    await Publish(exchange, failedQueue, RoutingKey.Create(failedQueue.Name.Value),
+                                        message);
+                                }
+
+                                channel.BasicAck(args.DeliveryTag, false);
+
+                                await _logger.WriteException(typeof(T).Name, exception,
+                                    new KeyValuePair<string, object>("Event", message));
+                            }
                         }
-                        catch (Exception exception)
-                        {
-                            if (message.CanRetry())
-                            {
-                                var retryQueue = queue.CreateRetryQueue(TimeSpan.FromMinutes(1), exchange, routingKey);
-                                await Publish(exchange, retryQueue, RoutingKey.Create(retryQueue.Name.Value), message);
-                            }
-                            else
-                            {
-                                var failedQueue = queue.CreateFailedQueue();
-                                await Publish(exchange, failedQueue, RoutingKey.Create(failedQueue.Name.Value),
-                                    message);
-                            }
-
-                            channel.BasicNack(args.DeliveryTag, false, false);
-
-                            var logger = scope.ServiceProvider.GetService<IBusLogger>();
-                            if (logger == null)
-                            {
-                                return;
-                            }
-
-                            await logger.WriteException(typeof(T).Name, exception,
-                                new KeyValuePair<string, object>("Event", message));
-                        }
-                    }
-                });
-                _tasks.Add(task);
-                return Task.CompletedTask;
+                    });
+                    tasks.Add(task);
+                }
+                catch (Exception ex)
+                {
+                    channel.BasicNack(args.DeliveryTag, false, true);
+                    await _logger.WriteException(typeof(T).Name, ex,
+                        new KeyValuePair<string, object>("args", args));
+                }
             };
 
             var consumerTag = channel.BasicConsume(queue.Name.Value, false, consumer);
-            _consumers.GetOrAdd(consumerTag, (channel, consumer));
+            _consumers.GetOrAdd(consumerTag, (channel, consumer, tasks));
         }
 
-        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
+        public Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {
-            await Policy.Handle<TimeoutException>()
-                .RetryForeverAsync()
-                .ExecuteAsync(() =>
-                {
-                    using (var channel = CreateChannel())
-                    {
-                        exchange.Declare(channel);
-                        queue.Declare(channel);
-                        queue.Bind(channel, exchange, routingKey);
-                        var (body, basicProperties) = message.GetData(channel, _serializer);
-                        channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, basicProperties, body);
-                        channel.Close();
-                    }
-
-                    return Task.CompletedTask;
-                });
+            _publisherBuffer.Add(new BatchItem(exchange, queue, routingKey, message));
+            return Task.CompletedTask;
         }
 
         public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
         {
-            await Publish(exchange, queue, routingKey, Message.Create(data, 5));
+            await Publish(exchange, queue, routingKey, Message.Create(data, MessageMaxRetry));
         }
 
         public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<object> notification)
         {
-            var messages = notification.Select(x => Message.Create(x, 5));
+            var messages = notification.Select(x => Message.Create(x, MessageMaxRetry));
             await PublishBatch(exchange, queue, routingKey, messages);
         }
 
-        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+        public Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<Message> messages)
         {
-            await Policy.Handle<TimeoutException>()
-                .RetryForeverAsync()
-                .ExecuteAsync(() =>
-                {
-                    using (var channel = CreateChannel())
-                    {
-                        exchange.Declare(channel);
-                        queue.Declare(channel);
-                        queue.Bind(channel, exchange, routingKey);
-                        var batch = channel.CreateBasicPublishBatch();
-                        foreach (var message in messages.ToList())
-                        {
-                            var (body, properties) = message.GetData(channel, _serializer);
-                            batch.Add(exchange.Name.Value, routingKey.Value, false, properties, body);
-                        }
+            var batches = messages.Select(x => new BatchItem(exchange, queue, routingKey, x));
+            foreach (var item in batches)
+            {
+                _publisherBuffer.Add(item);
+            }
 
-                        batch.Publish();
-                        channel.Close();
-                    }
-
-                    return Task.CompletedTask;
-                });
+            return Task.CompletedTask;
         }
 
-        public async Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
+        public Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
         {
-            await Policy.Handle<TimeoutException>()
-                .RetryForeverAsync()
-                .ExecuteAsync(() =>
-                {
-                    var message = Message.Create(notification, 5);
-                    using (var channel = CreateChannel())
-                    {
-                        exchange.Declare(channel);
-                        var (body, basicProperties) = message.GetData(channel, _serializer);
-                        channel.BasicPublish(exchange.Name.Value, routingKey.Value, false, basicProperties, body);
-                        channel.Close();
-                    }
-
-                    return Task.CompletedTask;
-                });
+            _publisherBuffer.Add(new BatchItem(exchange, null, routingKey,
+                Message.Create(notification, MessageMaxRetry)));
+            return Task.CompletedTask;
         }
 
         ~BusConnection()
@@ -224,30 +212,56 @@ namespace Seedwork.CQRS.Bus.Core
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
                 RequestedHeartbeat = 30,
-                NetworkRecoveryInterval = TimeSpan.FromSeconds(5),
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
         }
 
-        private IModel CreateChannel()
+        private void PublisherBufferOnCleared(IEnumerable<BatchItem> removedItems)
         {
-            var channel = Connection.CreateModel();
-            channel.ModelShutdown += (sender, args) =>
-            {
-                if (args.Initiator == ShutdownInitiator.Application)
-                {
-                    return;
-                }
-
-                Policy.Handle<BrokerUnreachableException>()
-                    .RetryForever()
-                    .Execute(() =>
+            Policy
+                .Handle<Exception>()
+                .WaitAndRetry(PublishMaxRetry, _ => TimeSpan.FromMilliseconds(PublishRetryDelayInMs),
+                    (exception, span) =>
                     {
-                        var autoRecoveringChannel = (AutorecoveringModel) channel;
-                        autoRecoveringChannel.AutomaticallyRecover((AutorecoveringConnection) Connection, null);
-                    });
-            };
-            return channel;
+                        _logger.WriteException("Publisher", exception,
+                            new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
+                    })
+                .Execute(() =>
+                {
+                    using (var channel = PublisherConnection.CreateModel())
+                    {
+                        var batch = channel.CreateBasicPublishBatch();
+                        try
+                        {
+                            foreach (var group in removedItems.GroupBy(x => (x.Exchange, x.Queue, x.RoutingKey)))
+                            {
+                                var (exchange, queue, routingKey) = group.Key;
+                                exchange.Declare(channel);
+                                queue?.Declare(channel);
+                                queue?.Bind(channel, exchange, routingKey);
+                                foreach (var item in group)
+                                {
+                                    var (body, basicProperties) =
+                                        item.Message.GetData(channel, _serializer);
+                                    batch.Add(exchange.Name.Value, routingKey.Value, false,
+                                        basicProperties, body);
+                                }
+                            }
+
+                            batch.Publish();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.WriteException("Publish", ex,
+                                new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
+                        }
+                        finally
+                        {
+                            channel.Close();
+                        }
+                    }
+                });
         }
 
         protected virtual void Dispose(bool disposing)
@@ -259,20 +273,19 @@ namespace Seedwork.CQRS.Bus.Core
 
             if (disposing)
             {
-                Task.WaitAll(_tasks.ToArray());
-                _tasks.Clear();
                 foreach (var consumerGroup in _consumers)
                 {
                     var key = consumerGroup.Key;
                     var value = consumerGroup.Value;
-                    var (channel, _) = value;
+                    var (channel, _, buffer) = value;
+                    buffer.Clear();
                     channel.BasicCancel(key);
                     channel.Close();
                     channel.Dispose();
                 }
 
-                _connection.Close();
-                _connection.Dispose();
+                _consumerConnection.Close();
+                _consumerConnection.Dispose();
             }
 
             _disposed = true;
