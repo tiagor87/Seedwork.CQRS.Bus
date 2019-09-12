@@ -286,9 +286,12 @@ namespace Seedwork.CQRS.Bus.UnitTests
             _busConnection.Subscribe<string>(exchange, queue, routingKey, 10, (scope, @event) =>
             {
                 isExecuted = true;
-                autoResetEvent.Set();
                 return Task.CompletedTask;
             });
+
+            _channelMock.Setup(x => x.BasicAck(1, false))
+                .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
+                .Verifiable();
 
             autoResetEvent.WaitOne();
 
