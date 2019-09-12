@@ -251,11 +251,6 @@ namespace Seedwork.CQRS.Bus.Core
 
                             batch.Publish();
                         }
-                        catch (Exception ex)
-                        {
-                            _logger?.WriteException("Publish", ex,
-                                new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
-                        }
                         finally
                         {
                             channel.Close();
