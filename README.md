@@ -21,9 +21,14 @@ services
     .AddSingleton(BusConnectionString.Create("amqp://guest:guest@localhost/"))
     .AddSingleton<IBusSerializer, BusSerializer>()
     .AddSingleton<BusConnection>()
+    .Configure<BusConnectionOptions>(configuration.GetSection("BusConnectionOptions"))
 ```
 
-## How to public a simple message?
+## Publish
+
+All the publish happens in batch, so you will have to wait until **PublisherBufferSize** achieved or **PublisherBufferTtlInMilliseconds** runs out.
+
+### How to publish a simple message?
 
 ```c#
 var exchange = Exchange.Create("exchange", ExchangeType.Direct);
@@ -34,7 +39,7 @@ string message = "Message";
 await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 ```
 
-## How to public a list of messages?
+### How to publish a list of messages?
 
 ```c#
 var exchange = Exchange.Create("exchange", ExchangeType.Direct);
@@ -49,7 +54,7 @@ string[] messages = new [] {
 await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, messages);
 ```
 
-## How to register a consumer?
+## How to process a message?
 
 ```c#
 _connectionFixture.Connection.Subscribe<string>(
@@ -67,8 +72,9 @@ _connectionFixture.Connection.Subscribe<string>(
 
 ### When fails to process a message, whats happens?
 
-* When a message fails to be processed, the application will requeue it to the retry-queue with a message expiration, to send it back to the main queue later.
-* When the max attempts is achivied, the application will route it to failed-queue.
+* When a message fails to be processed, the application will requeue it to the retry-queue with a message expiration, to send it back to the main queue later;
+* When the max attempts is achivied, the application will route it to failed-queue;
+* When system fails to requeue, it will nack the message.
 
 #### How can I configure the max attempts?
 
@@ -85,3 +91,34 @@ await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message
 
 * When publisher not set max attempts, a __default__ value will be set.
 * When publisher set max attempts to __zero__, it will retry forever.
+
+## What can I configure?
+
+* **PublisherBufferSize** (default: 1000): Message's limit to publish at once;
+* **PublisherBufferTtlInMilliseconds** (default: 5000): Publish messages when limit is not achieved; 
+* **ConnectionMaxRetry** (default: 10): Max attempts to connect to bus before fails; 
+* **ConnectionRetryDelayInMilliseconds** (default: 500): Delay between connection attempts;
+* **ConsumerMaxParallelTasks** (default: 500): Thread's limit to process; 
+* **MessageMaxRetry** (default: 5): Max attempts to process a message; 
+* **PublishMaxRetry** (default: 5): Max attempts to publish messages;
+* **PublishRetryDelayInMilliseconds** (default: 100): Delay between publish attempts.
+
+## Events
+
+* **PublishSuccessed**: When publish success, the system will dispatch this event with messages sent.
+
+```c#
+Connection.PublishSuccessed += items => 
+{
+    ...
+};
+```
+
+* **PublishFailed**: When publish fails after all attempts, the system will dispatch this event with messages and exception.
+
+```c#
+Connection.PublishFailed += (items, exception) => 
+{
+    ...
+};
+```

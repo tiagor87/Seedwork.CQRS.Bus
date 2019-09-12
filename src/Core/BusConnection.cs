@@ -34,8 +34,8 @@ namespace Seedwork.CQRS.Bus.Core
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
-            IBusLogger logger,
-            IOptions<BusConnectionOptions> options)
+            IOptions<BusConnectionOptions> options,
+            IBusLogger logger = null)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
@@ -52,9 +52,9 @@ namespace Seedwork.CQRS.Bus.Core
         public BusConnection(BusConnectionString connectionString,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
-            IBusLogger logger,
-            IOptions<BusConnectionOptions> options) : this(GetConnectionFactory(connectionString.Value), serializer,
-            serviceScopeFactory, logger, options)
+            IOptions<BusConnectionOptions> options,
+            IBusLogger logger = null) : this(GetConnectionFactory(connectionString.Value), serializer,
+            serviceScopeFactory, options, logger)
         {
         }
 
@@ -118,7 +118,7 @@ namespace Seedwork.CQRS.Bus.Core
             var consumer = new AsyncEventingBasicConsumer(channel);
 
             var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
-            consumer.Received += async (sender, args) =>
+            consumer.Received += (sender, args) =>
             {
                 while (tasks.Count == tasks.Capacity)
                 {
@@ -160,7 +160,7 @@ namespace Seedwork.CQRS.Bus.Core
 
                                 channel.BasicAck(args.DeliveryTag, false);
 
-                                await _logger.WriteException(typeof(T).Name, exception,
+                                _logger?.WriteException(typeof(T).Name, exception,
                                     new KeyValuePair<string, object>("Event", message));
                             }
                         }
@@ -173,9 +173,11 @@ namespace Seedwork.CQRS.Bus.Core
                 catch (Exception ex)
                 {
                     channel.BasicNack(args.DeliveryTag, false, true);
-                    await _logger.WriteException(typeof(T).Name, ex,
+                    _logger?.WriteException(typeof(T).Name, ex,
                         new KeyValuePair<string, object>("args", args));
                 }
+
+                return Task.CompletedTask;
             };
 
             var consumerTag = channel.BasicConsume(queue.Name.Value, false, consumer);
@@ -249,8 +251,8 @@ namespace Seedwork.CQRS.Bus.Core
                         _ => TimeSpan.FromMilliseconds(_options.Value.PublishRetryDelayInMilliseconds),
                         (exception, span) =>
                         {
-                            _logger.WriteException("Publisher", exception,
-                                new KeyValuePair<string, object>("Events", removedItems)).GetAwaiter().GetResult();
+                            _logger?.WriteException("Publisher", exception,
+                                new KeyValuePair<string, object>("Events", removedItems));
                         })
                     .Execute(() =>
                     {

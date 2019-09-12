@@ -57,8 +57,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
                 _serviceScopeFactoryMock.Object,
-                _loggerMock.Object,
-                _optionsMock.Object);
+                _optionsMock.Object,
+                _loggerMock.Object);
             _serviceScopeFactoryMock.Setup(x => x.CreateScope())
                 .Returns(_scopeMock.Object)
                 .Verifiable();
@@ -88,8 +88,8 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 _connectionFactoryMock.Object,
                 _busSerializerMock.Object,
                 _serviceScopeFactoryMock.Object,
-                _loggerMock.Object,
-                _optionsMock.Object);
+                _optionsMock.Object,
+                _loggerMock.Object);
 
             busConnection.Should().NotBeNull();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Never());
@@ -563,8 +563,12 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 })
                 .Returns(Guid.NewGuid().ToString());
 
-            _channelMock.Setup(x => x.BasicAck(deliveryTag, false))
-                .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
+            _loggerMock.Setup(x => x.WriteException(
+                    It.IsAny<string>(),
+                    It.IsAny<Exception>(),
+                    It.IsAny<KeyValuePair<string, object>[]>()))
+                .Callback((string name, Exception exception, KeyValuePair<string, Object>[] properties) =>
+                    autoResetEvent.Set())
                 .Verifiable();
 
             _busConnection.Subscribe<string>(
