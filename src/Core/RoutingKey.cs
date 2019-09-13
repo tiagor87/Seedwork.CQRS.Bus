@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text.RegularExpressions;
 using Seedwork.DomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
@@ -19,15 +18,6 @@ namespace Seedwork.CQRS.Bus.Core
             if (string.IsNullOrWhiteSpace(routing))
             {
                 throw new ArgumentNullException(nameof(routing));
-            }
-
-            if (!Regex.IsMatch(routing.Trim(), @"^[\w](\.(?!\.|$)|[\w\*\#]|\-(?!$|\-))+$", RegexOptions.None,
-                    TimeSpan.FromMilliseconds(10))
-                || routing.Split('.').Length == 1)
-            {
-                throw new ArgumentException(
-                    "The routing key is invalid. It should follow the rule \"[application-name].[specification-1]<.<specification-n>>\".",
-                    nameof(routing));
             }
 
             return new RoutingKey(routing.Trim());

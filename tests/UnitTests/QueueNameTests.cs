@@ -18,19 +18,6 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Theory]
-        [InlineData("seedwork")]
-        [InlineData("seedwork.")]
-        [InlineData(".seedwork.cqrs")]
-        [InlineData(".seedwork..cqrs")]
-        [InlineData("seedwork.cqrs--bus")]
-        [InlineData("seedwork.cqrs-bus.")]
-        public void GivenNameWhenInvalidShouldThrowsArgumentException(string name)
-        {
-            Func<QueueName> action = () => QueueName.Create(name);
-            action.Should().Throw<ArgumentException>();
-        }
-
-        [Theory]
         [InlineData("seedwork.cqrs")]
         [InlineData("seedwork.cqrs-bus")]
         [InlineData("seedwork.cqrs-bus.core")]

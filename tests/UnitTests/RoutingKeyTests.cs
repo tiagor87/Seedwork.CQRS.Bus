@@ -18,18 +18,6 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Theory]
-        [InlineData("seedwork.")]
-        [InlineData(".seedwork.cqrs")]
-        [InlineData(".seedwork..cqrs")]
-        [InlineData("seedwork.cqrs--bus")]
-        [InlineData("seedwork.cqrs-bus.")]
-        public void GivenRoutingKeyWhenInvalidShouldThrowsArgumentException(string routing)
-        {
-            Func<RoutingKey> action = () => RoutingKey.Create(routing);
-            action.Should().Throw<ArgumentException>();
-        }
-
-        [Theory]
         [InlineData("seedwork.*")]
         [InlineData("seedwork.cqrs")]
         [InlineData("seedwork.cqrs-bus")]
