@@ -1,3 +1,4 @@
+using System;
 using System.Diagnostics.CodeAnalysis;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -6,21 +7,38 @@ using Seedwork.CQRS.Bus.Core;
 namespace Seedwork.CQRS.Bus.IntegrationTests
 {
     [ExcludeFromCodeCoverage]
-    public class TestMessage : Message
+    public class TestMessage<T> : Message<T>
     {
-        public TestMessage(object data, int maxAttempts, int attemptCount) : base(data, maxAttempts,
-            attemptCount)
+        public TestMessage(T data, int maxAttempts, int attemptCount, Action<Message<T>> onDone,
+            Action<Exception, Message<T>> onFail) : base(null, null, null, null, 0, data, maxAttempts, attemptCount,
+            onDone, onFail)
         {
         }
 
-        internal static Message Create<T>(IBusSerializer serializer, BasicGetResult result) => Create<T>(serializer,
-            new BasicDeliverEventArgs(
+        internal static Message<T> Create(
+            BasicGetResult result,
+            IBusSerializer serializer,
+            Action<Message<T>> onDone,
+            Action<Exception, Message<T>> onFail)
+        {
+            var @event = new BasicDeliverEventArgs(
                 string.Empty,
                 result.DeliveryTag,
                 result.Redelivered,
                 result.Exchange,
                 result.RoutingKey,
                 result.BasicProperties,
-                result.Body));
+                result.Body);
+
+            return Create(
+                null,
+                null,
+                null,
+                null,
+                serializer,
+                @event,
+                onDone,
+                onFail);
+        }
     }
 }

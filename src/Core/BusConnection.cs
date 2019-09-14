@@ -107,7 +107,7 @@ namespace Seedwork.CQRS.Bus.Core
         public event PublishFailed PublishFailed;
 
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
-            Func<IServiceScope, T, Task> action)
+            Func<IServiceScope, Message<T>, Task> action, bool autoAck = true)
         {
             var channel = ConsumerConnection.CreateModel();
             channel.BasicQos(0, prefetchCount, false);
@@ -124,7 +124,7 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     lock (_sync)
                     {
-                        tasks.RemoveAll(x => x.IsCompleted);
+                        tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
                     }
 
                     Thread.Sleep(100);
@@ -134,34 +134,18 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     var task = Task.Run(async () =>
                     {
-                        var message = Message.Create<T>(_serializer, args);
+                        var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args, OnDone,
+                            OnFail);
                         using (var scope = _serviceScopeFactory.CreateScope())
                         {
                             try
                             {
-                                await action.Invoke(scope, (T) message.Data);
-                                channel.BasicAck(args.DeliveryTag, false);
+                                await action.Invoke(scope, message);
+                                if (autoAck) message.Complete();
                             }
                             catch (Exception exception)
                             {
-                                if (message.CanRetry())
-                                {
-                                    var retryQueue = queue.CreateRetryQueue(TimeSpan.FromMinutes(1), exchange,
-                                        routingKey);
-                                    await Publish(exchange, retryQueue, RoutingKey.Create(retryQueue.Name.Value),
-                                        message);
-                                }
-                                else
-                                {
-                                    var failedQueue = queue.CreateFailedQueue();
-                                    await Publish(exchange, failedQueue, RoutingKey.Create(failedQueue.Name.Value),
-                                        message);
-                                }
-
-                                channel.BasicAck(args.DeliveryTag, false);
-
-                                _logger?.WriteException(typeof(T).Name, exception,
-                                    new KeyValuePair<string, object>("Event", message));
+                                message.Fail(exception);
                             }
                         }
                     });
@@ -184,25 +168,24 @@ namespace Seedwork.CQRS.Bus.Core
             _consumers.GetOrAdd(consumerTag, (channel, consumer, tasks));
         }
 
-        public Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
+        public void Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
         {
             _publisherBuffer.Add(new BatchItem(exchange, queue, routingKey, message));
-            return Task.CompletedTask;
         }
 
-        public async Task Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
+        public void Publish(Exchange exchange, Queue queue, RoutingKey routingKey, object data)
         {
-            await Publish(exchange, queue, routingKey, Message.Create(data, _options.Value.MessageMaxRetry));
+            Publish(exchange, queue, routingKey, Message.Create(data, _options.Value.MessageMaxRetry));
         }
 
-        public async Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+        public void PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<object> notification)
         {
             var messages = notification.Select(x => Message.Create(x, _options.Value.MessageMaxRetry));
-            await PublishBatch(exchange, queue, routingKey, messages);
+            PublishBatch(exchange, queue, routingKey, messages);
         }
 
-        public Task PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
+        public void PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<Message> messages)
         {
             var batches = messages.Select(x => new BatchItem(exchange, queue, routingKey, x));
@@ -210,15 +193,12 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 _publisherBuffer.Add(item);
             }
-
-            return Task.CompletedTask;
         }
 
-        public Task Publish(Exchange exchange, RoutingKey routingKey, object notification)
+        public void Publish(Exchange exchange, RoutingKey routingKey, object notification)
         {
             _publisherBuffer.Add(new BatchItem(exchange, null, routingKey,
                 Message.Create(notification, _options.Value.MessageMaxRetry)));
-            return Task.CompletedTask;
         }
 
         ~BusConnection()
@@ -237,6 +217,30 @@ namespace Seedwork.CQRS.Bus.Core
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
+        }
+
+        private void OnDone<T>(Message<T> message) => message.Channel.BasicAck(message.DeliveryTag, false);
+
+        private void OnFail<T>(Exception exception, Message<T> message)
+        {
+            if (message.CanRetry())
+            {
+                var retryQueue = message.Queue
+                    .CreateRetryQueue(TimeSpan.FromMinutes(1), message.Exchange, message.RoutingKey);
+                var retryRoutingKey = RoutingKey.Create(retryQueue.Name.Value);
+                Publish(message.Exchange, retryQueue, retryRoutingKey, message);
+            }
+            else
+            {
+                var failedQueue = message.Queue
+                    .CreateFailedQueue();
+                var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
+                Publish(message.Exchange, failedQueue, failedRoutingKey, message);
+            }
+
+            message.Channel.BasicAck(message.DeliveryTag, false);
+
+            _logger?.WriteException(typeof(T).Name, exception, new KeyValuePair<string, object>("Event", message));
         }
 
         private void PublisherBufferOnCleared(IEnumerable<BatchItem> removedItems)

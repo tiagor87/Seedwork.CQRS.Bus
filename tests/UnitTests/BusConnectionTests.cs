@@ -96,8 +96,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task
-            GivenConnectionWhenPublishFailsShouldExecuteFailedCallback()
+        public void GivenConnectionWhenPublishFailsShouldExecuteFailedCallback()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -129,7 +128,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 callbackException = ex;
                 autoResetEvent.Set();
             };
-            await _busConnection.Publish(exchange, queue, routingKey, notification);
+            _busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -141,8 +140,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task
-            GivenConnectionWhenPublishShouldConfigureBasicPropertiesForRetry()
+        public void GivenConnectionWhenPublishShouldConfigureBasicPropertiesForRetry()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -165,7 +163,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            await _busConnection.Publish(exchange, queue, routingKey, notification);
+            _busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -177,7 +175,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenPublishShouldDeclareExchangePublishMessageCloseAndDisposeChannel()
+        public void GivenConnectionWhenPublishShouldDeclareExchangePublishMessageCloseAndDisposeChannel()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -193,7 +191,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            await _busConnection.Publish(exchange, routingKey, notification);
+            _busConnection.Publish(exchange, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -211,8 +209,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task
-            GivenConnectionWhenPublishShouldDeclareExchangeQueueAndBindRoutingKey()
+        public void GivenConnectionWhenPublishShouldDeclareExchangeQueueAndBindRoutingKey()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -235,7 +232,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            await _busConnection.Publish(exchange, queue, routingKey, notification);
+            _busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -262,8 +259,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task
-            GivenConnectionWhenPublishShouldPublishMessageAndCloseAndDisposeChannel()
+        public void GivenConnectionWhenPublishShouldPublishMessageAndCloseAndDisposeChannel()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -286,7 +282,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            await _busConnection.Publish(exchange, queue, routingKey, notification);
+            _busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -304,8 +300,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
-        public async Task
-            GivenConnectionWhenPublishSuccessedShouldExecuteSuccessedCallback()
+        public void GivenConnectionWhenPublishSuccessedShouldExecuteSuccessedCallback()
         {
             const string notification = "test";
             var exchange = Exchange.Create("test", ExchangeType.Direct);
@@ -331,7 +326,7 @@ namespace Seedwork.CQRS.Bus.UnitTests
                 callbackItems = items.ToList();
                 autoResetEvent.Set();
             };
-            await _busConnection.Publish(exchange, queue, routingKey, notification);
+            _busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 

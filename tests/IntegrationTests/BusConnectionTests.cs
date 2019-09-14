@@ -28,7 +28,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenPublishBatchShouldQueueHaveBatchLength()
+        public void GivenConnectionWhenPublishBatchShouldQueueHaveBatchLength()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
@@ -39,7 +39,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var autoResetEvent = new AutoResetEvent(false);
             _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
 
-            await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, new[]
+            _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, new[]
             {
                 notification,
                 notification
@@ -51,7 +51,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenPublishMessageShouldQueueHaveCountOne()
+        public void GivenConnectionWhenPublishMessageShouldQueueHaveCountOne()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
@@ -62,7 +62,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var autoResetEvent = new AutoResetEvent(false);
             _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne();
 
@@ -70,7 +70,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenPublishShouldAddRetryProperties()
+        public void GivenConnectionWhenPublishShouldAddRetryProperties()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
@@ -82,7 +82,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var autoResetEvent = new AutoResetEvent(false);
             _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
             autoResetEvent.WaitOne();
 
@@ -94,12 +94,12 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenSubscribeAndThrowAndMaxAttemptsAchievedShouldQueueOnFailedQueue()
+        public void GivenConnectionWhenSubscribeAndThrowAndMaxAttemptsAchievedShouldQueueOnFailedQueue()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
             var routingKey = RoutingKey.Create(queue.Name.Value);
-            var message = new TestMessage("notification", 1, 1);
+            var message = new TestMessage<string>(null, 1, 1, null, null);
 
             var autoResetEvent = new AutoResetEvent(false);
 
@@ -111,7 +111,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 }
             };
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
             _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, m) =>
             {
@@ -129,7 +129,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenSubscribeAndThrowShouldRequeueOnRetryQueue()
+        public void GivenConnectionWhenSubscribeAndThrowShouldRequeueOnRetryQueue()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
@@ -146,7 +146,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 }
             };
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
             _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
             {
@@ -164,7 +164,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
         }
 
         [Fact]
-        public async Task GivenConnectionWhenSubscribeShouldExecuteCallback()
+        public void GivenConnectionWhenSubscribeShouldExecuteCallback()
         {
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
@@ -172,7 +172,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             var routingKey = RoutingKey.Create(queue.Name.Value);
             const string notification = "Notification message";
 
-            await _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
             IServiceScope callbackScope = null;
             string callbackMessage = null;

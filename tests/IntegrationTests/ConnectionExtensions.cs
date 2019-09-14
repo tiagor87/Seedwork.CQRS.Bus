@@ -20,7 +20,11 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
             {
                 var result = channel.BasicGet(queue.Name.Value, false);
                 var serializer = new BusSerializer();
-                var message = TestMessage.Create<string>(serializer, result);
+                var message = TestMessage<string>.Create(
+                    result,
+                    serializer,
+                    msg => { },
+                    (exception, msg) => { });
                 channel.Close();
                 return message;
             }
