@@ -126,12 +126,16 @@ namespace Seedwork.CQRS.Bus.Core
             Action<Exception, Message<T>> onFail)
         {
             var data = serializer.Deserialize<T>(@event.Body).GetAwaiter().GetResult();
-            if (!@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out var maxAttempts))
+            object maxAttempts;
+            if (@event.BasicProperties.Headers == null ||
+                !@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out maxAttempts))
             {
                 maxAttempts = 5;
             }
 
-            if (!@event.BasicProperties.Headers.TryGetValue(nameof(AttemptCount), out var attempts))
+            object attempts;
+            if (@event.BasicProperties.Headers == null ||
+                !@event.BasicProperties.Headers.TryGetValue(nameof(AttemptCount), out attempts))
             {
                 attempts = 0;
             }
