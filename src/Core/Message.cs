@@ -35,7 +35,7 @@ namespace Seedwork.CQRS.Bus.Core
             return new Message(data, maxAttempts, 0);
         }
 
-        protected internal (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
+        protected internal virtual (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
         {
             var body = serializer.Serialize(Data).GetAwaiter().GetResult();
             var basicProperties = channel.CreateBasicProperties();
@@ -50,6 +50,27 @@ namespace Seedwork.CQRS.Bus.Core
             return MaxAttempts == 0 || AttemptCount < MaxAttempts;
         }
     }
+
+    internal class ErrorMessage : Message
+    {
+        private readonly IBasicProperties _basicProperties;
+
+        private ErrorMessage(byte[] data, IBasicProperties basicProperties) : base(data, 0, 0)
+        {
+            _basicProperties = basicProperties;
+        }
+
+        internal static ErrorMessage Create(byte[] data, IBasicProperties basicProperties)
+        {
+            return new ErrorMessage(data, basicProperties);
+        }
+
+        protected internal override (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
+        {
+            return (Data as byte[], _basicProperties);
+        }
+    }
+
 
     public class Message<T> : Message, IDisposable
     {

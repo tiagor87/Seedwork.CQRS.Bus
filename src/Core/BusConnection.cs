@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using BufferList;
@@ -134,19 +135,33 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     var task = Task.Run(async () =>
                     {
-                        var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args, OnDone,
-                            OnFail);
-                        using (var scope = _serviceScopeFactory.CreateScope())
+                        try
                         {
-                            try
+                            var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args,
+                                OnDone,
+                                OnFail);
+                            using (var scope = _serviceScopeFactory.CreateScope())
                             {
-                                await action.Invoke(scope, message);
-                                if (autoAck) message.Complete();
+                                try
+                                {
+                                    await action.Invoke(scope, message);
+                                    if (autoAck) message.Complete();
+                                }
+                                catch (Exception exception)
+                                {
+                                    message.Fail(exception);
+                                }
                             }
-                            catch (Exception exception)
-                            {
-                                message.Fail(exception);
-                            }
+                        }
+                        catch (Exception exception)
+                        {
+                            var failedQueue = queue.CreateFailedQueue();
+                            var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
+                            Publish(exchange, failedQueue, failedRoutingKey,
+                                ErrorMessage.Create(args.Body, args.BasicProperties));
+                            channel.BasicNack(args.DeliveryTag, false, false);
+                            _logger?.WriteException(nameof(Subscribe), exception,
+                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
                         }
                     });
                     lock (_sync)

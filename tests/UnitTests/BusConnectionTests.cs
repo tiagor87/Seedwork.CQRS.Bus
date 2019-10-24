@@ -96,6 +96,75 @@ namespace Seedwork.CQRS.Bus.UnitTests
         }
 
         [Fact]
+        public void GivenConnectionWhenFailToDeserializeShouldNackAndPublichFailed()
+        {
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+            const ushort deliveryTag = 1;
+
+            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+                .ThrowsAsync(new Exception("Test message"))
+                .Verifiable();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _channelMock.Setup(x => x.BasicConsume(
+                    queue.Name.Value,
+                    false,
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<IDictionary<string, object>>(),
+                    It.IsAny<IBasicConsumer>()))
+                .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
+                    IDictionary<string, object> _, IBasicConsumer consumer) =>
+                {
+                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                        consumerTag,
+                        deliveryTag,
+                        false,
+                        exchange.Name.Value,
+                        routingKey.Value,
+                        _basicPropertiesMock.Object,
+                        body).Wait();
+                })
+                .Returns(Guid.NewGuid().ToString());
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
+            _busConnection.Subscribe<string>(
+                exchange,
+                queue,
+                routingKey,
+                10,
+                (scope, @event) => Task.CompletedTask);
+
+            autoResetEvent.WaitOne();
+
+            _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
+                It.IsAny<KeyValuePair<string, object>[]>()));
+            _channelMock.Verify(x => x.BasicNack(deliveryTag, false, false));
+
+            _publishBatchMock.VerifyAll();
+            _channelMock.Verify(x => x.QueueDeclare(
+                It.Is((string y) => y.EndsWith("-failed")),
+                true,
+                false,
+                false,
+                It.IsAny<IDictionary<string, object>>()), Times.Once());
+            _publishBatchMock.Verify(x => x.Add(
+                exchange.Name.Value,
+                It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-failed")),
+                false,
+                _basicPropertiesMock.Object,
+                It.IsAny<byte[]>()), Times.Once());
+        }
+
+        [Fact]
         public void GivenConnectionWhenPublishFailsShouldExecuteFailedCallback()
         {
             const string notification = "test";
