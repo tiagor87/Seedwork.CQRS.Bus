@@ -47,7 +47,7 @@ namespace Seedwork.CQRS.Bus.Core
             _publisherBuffer =
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
                     TimeSpan.FromMilliseconds(_options.Value.PublisherBufferTtlInMilliseconds));
-            _publisherBuffer.Cleared += PublisherBufferOnCleared;
+            _publisherBuffer.Cleared += PublishBufferOnCleared;
         }
 
         public BusConnection(BusConnectionString connectionString,
@@ -155,13 +155,13 @@ namespace Seedwork.CQRS.Bus.Core
                         }
                         catch (Exception exception)
                         {
+                            _logger?.WriteException(nameof(Subscribe), exception,
+                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
                             var failedQueue = queue.CreateFailedQueue();
                             var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
                             Publish(exchange, failedQueue, failedRoutingKey,
                                 ErrorMessage.Create(args.Body, args.BasicProperties));
                             channel.BasicNack(args.DeliveryTag, false, false);
-                            _logger?.WriteException(nameof(Subscribe), exception,
-                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
                         }
                     });
                     lock (_sync)
@@ -171,9 +171,9 @@ namespace Seedwork.CQRS.Bus.Core
                 }
                 catch (Exception ex)
                 {
-                    channel.BasicNack(args.DeliveryTag, false, true);
                     _logger?.WriteException(typeof(T).Name, ex,
                         new KeyValuePair<string, object>("args", args));
+                    channel.BasicNack(args.DeliveryTag, false, true);
                 }
 
                 return Task.CompletedTask;
@@ -258,7 +258,7 @@ namespace Seedwork.CQRS.Bus.Core
             _logger?.WriteException(typeof(T).Name, exception, new KeyValuePair<string, object>("Event", message));
         }
 
-        private void PublisherBufferOnCleared(IEnumerable<BatchItem> removedItems)
+        private void PublishBufferOnCleared(IEnumerable<BatchItem> removedItems)
         {
             var items = removedItems.ToList();
             try
@@ -308,6 +308,8 @@ namespace Seedwork.CQRS.Bus.Core
             }
             catch (Exception ex)
             {
+                _logger?.WriteException(nameof(PublishBufferOnCleared), ex,
+                    new KeyValuePair<string, object>("Events", items));
                 PublishFailed?.Invoke(items, ex);
             }
         }
