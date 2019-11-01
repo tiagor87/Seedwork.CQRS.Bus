@@ -7,8 +7,7 @@
         <Description>Package to use CQRS pattern with Message Queue</Description>
         <PackageProjectUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</PackageProjectUrl>
         <RepositoryUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</RepositoryUrl>
-        <LangVersion>default</LangVersion>
-        <ProjectGuid>{E8160911-E4FE-41A7-8BD3-223C36DC84A7}</ProjectGuid>
+        <ProjectGuid>{1F8672F0-60FD-4CA1-ACF4-F6280A25BAC0}</ProjectGuid>
     </PropertyGroup>
 
     <ItemGroup>

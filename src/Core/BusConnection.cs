@@ -193,6 +193,12 @@ namespace Seedwork.CQRS.Bus.Core
             Publish(exchange, queue, routingKey, Message.Create(data, _options.Value.MessageMaxRetry));
         }
 
+        public void Publish(Exchange exchange, RoutingKey routingKey, object notification)
+        {
+            _publisherBuffer.Add(new BatchItem(exchange, null, routingKey,
+                Message.Create(notification, _options.Value.MessageMaxRetry)));
+        }
+
         public void PublishBatch(Exchange exchange, Queue queue, RoutingKey routingKey,
             IEnumerable<object> notification)
         {
@@ -208,12 +214,6 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 _publisherBuffer.Add(item);
             }
-        }
-
-        public void Publish(Exchange exchange, RoutingKey routingKey, object notification)
-        {
-            _publisherBuffer.Add(new BatchItem(exchange, null, routingKey,
-                Message.Create(notification, _options.Value.MessageMaxRetry)));
         }
 
         ~BusConnection()

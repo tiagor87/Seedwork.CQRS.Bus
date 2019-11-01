@@ -10,9 +10,10 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
     public class TestMessage<T> : Message<T>
     {
         public TestMessage(T data, int maxAttempts, int attemptCount, Action<Message<T>> onDone,
-            Action<Exception, Message<T>> onFail) : base(null, null, null, null, 0, data, maxAttempts, attemptCount,
-            onDone, onFail)
+            Action<Exception, Message<T>> onFail) : base(0, data, maxAttempts, attemptCount)
         {
+            SetOnDone(onDone);
+            SetOnFail(onFail);
         }
 
         internal static Message<T> Create(

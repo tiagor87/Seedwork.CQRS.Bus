@@ -74,30 +74,18 @@ namespace Seedwork.CQRS.Bus.Core
 
     public class Message<T> : Message, IDisposable
     {
-        private readonly Action<Message<T>> _onDone;
-        private readonly Action<Exception, Message<T>> _onFail;
+        private readonly object _sync = new object();
         private bool _completed;
         private bool _disposed;
-        private object _sync = new object();
+        private Action<Message<T>> _onDone;
+        private Action<Exception, Message<T>> _onFail;
 
         protected Message(
-            IModel channel,
-            Exchange exchange,
-            Queue queue,
-            RoutingKey routingKey,
             ulong deliveryTag,
             T data,
             int maxAttempts,
-            int attemptCount,
-            Action<Message<T>> onDone,
-            Action<Exception, Message<T>> onFail) : base(data, maxAttempts, attemptCount)
+            int attemptCount) : base(data, maxAttempts, attemptCount)
         {
-            Channel = channel;
-            Exchange = exchange;
-            Queue = queue;
-            RoutingKey = routingKey;
-            _onDone = onDone;
-            _onFail = onFail;
             DeliveryTag = deliveryTag;
             Value = data;
         }
@@ -105,15 +93,51 @@ namespace Seedwork.CQRS.Bus.Core
         public T Value { get; }
         public ulong DeliveryTag { get; }
 
-        internal IModel Channel { get; }
-        internal Exchange Exchange { get; }
-        internal Queue Queue { get; }
-        internal RoutingKey RoutingKey { get; }
+        internal IModel Channel { get; set; }
+        internal Exchange Exchange { get; set; }
+        internal Queue Queue { get; set; }
+        internal RoutingKey RoutingKey { get; set; }
 
         public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
+        }
+
+        protected Message<T> SetOnFail(Action<Exception, Message<T>> onFail)
+        {
+            _onFail = onFail;
+            return this;
+        }
+
+        protected Message<T> SetOnDone(Action<Message<T>> onDone)
+        {
+            _onDone = onDone;
+            return this;
+        }
+
+        protected Message<T> SetChannel(IModel channel)
+        {
+            Channel = channel;
+            return this;
+        }
+
+        protected Message<T> SetExchange(Exchange exchange)
+        {
+            Exchange = exchange;
+            return this;
+        }
+
+        protected Message<T> SetQueue(Queue queue)
+        {
+            Queue = queue;
+            return this;
+        }
+
+        protected Message<T> SetRoutingKey(RoutingKey routingKey)
+        {
+            RoutingKey = routingKey;
+            return this;
         }
 
         public void Complete()
@@ -147,32 +171,30 @@ namespace Seedwork.CQRS.Bus.Core
             Action<Exception, Message<T>> onFail)
         {
             var data = serializer.Deserialize<T>(@event.Body).GetAwaiter().GetResult();
-            object maxAttempts;
             if (@event.BasicProperties.Headers == null ||
-                !@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out maxAttempts))
+                !@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out var maxAttempts))
             {
                 maxAttempts = 5;
             }
 
-            object attempts;
             if (@event.BasicProperties.Headers == null ||
-                !@event.BasicProperties.Headers.TryGetValue(nameof(AttemptCount), out attempts))
+                !@event.BasicProperties.Headers.TryGetValue(nameof(AttemptCount), out var attempts))
             {
                 attempts = 0;
             }
 
             var attemptCount = (int) attempts;
             return new Message<T>(
-                channel,
-                exchange,
-                queue,
-                routingKey,
-                @event.DeliveryTag,
-                data,
-                (int) maxAttempts,
-                ++attemptCount,
-                onDone,
-                onFail);
+                    @event.DeliveryTag,
+                    data,
+                    (int) maxAttempts,
+                    ++attemptCount)
+                .SetOnDone(onDone)
+                .SetOnFail(onFail)
+                .SetChannel(channel)
+                .SetExchange(exchange)
+                .SetQueue(queue)
+                .SetRoutingKey(routingKey);
         }
 
         public static implicit operator T(Message<T> message)
