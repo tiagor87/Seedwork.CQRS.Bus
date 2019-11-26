@@ -4,7 +4,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Seedwork.CQRS.Bus.Core;
 
-namespace Seedwork.CQRS.Bus.IntegrationTests
+namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
 {
     [ExcludeFromCodeCoverage]
     public class TestMessage<T> : Message<T>
@@ -35,7 +35,7 @@ namespace Seedwork.CQRS.Bus.IntegrationTests
                 null,
                 null,
                 null,
-                null,
+                (RoutingKey) null,
                 serializer,
                 @event,
                 onDone,

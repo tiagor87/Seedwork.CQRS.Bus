@@ -107,14 +107,27 @@ namespace Seedwork.CQRS.Bus.Core
         public event PublishSuccessed PublishSuccessed;
         public event PublishFailed PublishFailed;
 
+        public void Declare(Exchange exchange, Queue queue, params RoutingKey[] routingKeys)
+        {
+            using (var channel = PublisherConnection.CreateModel())
+            {
+                exchange.Declare(channel);
+                queue.Declare(channel);
+                foreach (var key in routingKeys)
+                {
+                    queue.Bind(channel, exchange, key);
+                }
+
+                channel.Close();
+            }
+        }
+
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
             Func<IServiceScope, Message<T>, Task> action, bool autoAck = true)
         {
             var channel = ConsumerConnection.CreateModel();
             channel.BasicQos(0, prefetchCount, false);
-            exchange.Declare(channel);
-            queue.Declare(channel);
-            queue.Bind(channel, exchange, routingKey);
+            Declare(exchange, queue, routingKey);
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 

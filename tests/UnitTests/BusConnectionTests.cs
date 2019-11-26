@@ -14,7 +14,7 @@ using Seedwork.CQRS.Bus.Core;
 using Xunit;
 using ExchangeType = Seedwork.CQRS.Bus.Core.ExchangeType;
 
-namespace Seedwork.CQRS.Bus.UnitTests
+namespace Seedwork.CQRS.Bus.Tests.UnitTests
 {
     public class BusConnectionTests
     {

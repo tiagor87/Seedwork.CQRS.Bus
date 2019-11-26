@@ -3,7 +3,7 @@ using FluentAssertions;
 using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.UnitTests
+namespace Seedwork.CQRS.Bus.Tests.UnitTests
 {
     public class QueueNameTests
     {

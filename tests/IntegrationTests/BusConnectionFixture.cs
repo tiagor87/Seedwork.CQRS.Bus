@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Seedwork.CQRS.Bus.Core;
 
-namespace Seedwork.CQRS.Bus.IntegrationTests
+namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
 {
     public class BusConnectionFixture : IDisposable
     {
