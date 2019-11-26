@@ -8,6 +8,7 @@
         <PackageProjectUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</PackageProjectUrl>
         <RepositoryUrl>https://github.com/tiagor87/Seedwork.CQRS.Bus</RepositoryUrl>
         <ProjectGuid>{1F8672F0-60FD-4CA1-ACF4-F6280A25BAC0}</ProjectGuid>
+        <DebugType>Full</DebugType>
     </PropertyGroup>
 
     <ItemGroup>
