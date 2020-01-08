@@ -109,6 +109,8 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
+            
+            // _channelMock.Setup(x => x.QueueDeclare(It.Is))
 
             _channelMock.Setup(x => x.BasicConsume(
                     queue.Name.Value,
@@ -150,6 +152,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             _channelMock.Verify(x => x.BasicNack(deliveryTag, false, false));
 
             _publishBatchMock.VerifyAll();
+            
             _channelMock.Verify(x => x.QueueDeclare(
                 It.Is((string y) => y.EndsWith("-failed")),
                 true,
@@ -581,7 +584,9 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 true,
                 false,
                 false,
-                It.IsAny<IDictionary<string, object>>()), Times.Once());
+                It.Is<IDictionary<string, object>>(args =>
+                    args["x-dead-letter-exchange"].Equals(ExchangeName.Default.Value)
+                    && args["x-dead-letter-routing-key"].Equals(queue.Name.Value))), Times.Once());
             _publishBatchMock.Verify(x => x.Add(
                 Exchange.Default.Name.Value,
                 It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry")),
