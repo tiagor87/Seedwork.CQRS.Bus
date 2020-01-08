@@ -186,15 +186,17 @@ namespace Seedwork.CQRS.Bus.Core
 
         protected internal void Bind(IModel channel, Exchange exchange, RoutingKey routingKey)
         {
+            if (exchange.IsDefault) return;
             channel.QueueBind(Name.Value, exchange.Name.Value, routingKey.Value, _arguments);
         }
 
-        protected internal Queue CreateRetryQueue(TimeSpan ttl, Exchange targetExchange, RoutingKey targetRoutingKey)
+        protected internal Queue CreateRetryQueue(TimeSpan ttl)
         {
-            return Create($"{Name.Value}-retry")
+            var queueName = $"{Name.Value}-retry";
+            return Create(queueName)
                 .WithDurability(Durability.Durable)
                 .MessagesExpiresIn(ttl)
-                .SendExpiredMessagesTo(targetExchange, targetRoutingKey);
+                .SendExpiredMessagesTo(Exchange.Default, RoutingKey.Create(queueName));
         }
 
         protected internal Queue CreateFailedQueue()

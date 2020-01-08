@@ -96,7 +96,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
         }
 
         [Fact]
-        public void GivenConnectionWhenFailToDeserializeShouldNackAndPublichFailed()
+        public void GivenConnectionWhenFailToDeserializeShouldNackAndPublishFailed()
         {
             var exchange = Exchange.Create("test", ExchangeType.Direct);
             var queue = Queue.Create("test.requested");
@@ -157,7 +157,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 false,
                 It.IsAny<IDictionary<string, object>>()), Times.Once());
             _publishBatchMock.Verify(x => x.Add(
-                exchange.Name.Value,
+                ExchangeName.Default.Value,
                 It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-failed")),
                 false,
                 _basicPropertiesMock.Object,
@@ -583,7 +583,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 false,
                 It.IsAny<IDictionary<string, object>>()), Times.Once());
             _publishBatchMock.Verify(x => x.Add(
-                exchange.Name.Value,
+                Exchange.Default.Name.Value,
                 It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry")),
                 false,
                 _basicPropertiesMock.Object,

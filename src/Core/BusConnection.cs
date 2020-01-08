@@ -172,7 +172,7 @@ namespace Seedwork.CQRS.Bus.Core
                                 new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
                             var failedQueue = queue.CreateFailedQueue();
                             var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
-                            Publish(exchange, failedQueue, failedRoutingKey,
+                            Publish(Exchange.Default, failedQueue, failedRoutingKey,
                                 ErrorMessage.Create(args.Body, args.BasicProperties));
                             channel.BasicNack(args.DeliveryTag, false, false);
                         }
@@ -254,16 +254,16 @@ namespace Seedwork.CQRS.Bus.Core
             if (message.CanRetry())
             {
                 var retryQueue = message.Queue
-                    .CreateRetryQueue(TimeSpan.FromMinutes(1), message.Exchange, message.RoutingKey);
+                    .CreateRetryQueue(TimeSpan.FromMinutes(1));
                 var retryRoutingKey = RoutingKey.Create(retryQueue.Name.Value);
-                Publish(message.Exchange, retryQueue, retryRoutingKey, message);
+                Publish(Exchange.Default, retryQueue, retryRoutingKey, message);
             }
             else
             {
                 var failedQueue = message.Queue
                     .CreateFailedQueue();
                 var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
-                Publish(message.Exchange, failedQueue, failedRoutingKey, message);
+                Publish(Exchange.Default, failedQueue, failedRoutingKey, message);
             }
 
             message.Channel.BasicAck(message.DeliveryTag, false);

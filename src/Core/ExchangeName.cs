@@ -12,6 +12,7 @@ namespace Seedwork.CQRS.Bus.Core
         }
 
         public string Value { get; private set; }
+        public static ExchangeName Default => new ExchangeName(string.Empty);
 
         public static ExchangeName Create(string name)
         {
