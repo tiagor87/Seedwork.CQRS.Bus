@@ -143,7 +143,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 10,
                 (scope, @event) => Task.CompletedTask);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
                 It.IsAny<KeyValuePair<string, object>[]>()));
@@ -199,7 +199,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             };
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
 
@@ -234,7 +234,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.CreateBasicProperties(), Times.Once());
@@ -262,7 +262,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
@@ -303,7 +303,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
             _connectionFactoryMock.Verify(x => x.CreateConnection(), Times.Once());
@@ -353,7 +353,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
 
@@ -397,7 +397,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             };
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
 
@@ -452,7 +452,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
                 .Verifiable();
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             isExecuted.Should().BeTrue();
             _channelMock.Verify(x => x.BasicQos(0, 10, false), Times.Once());
@@ -515,7 +515,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 10,
                 (scope, @event) => throw new Exception());
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _channelMock.Verify(x => x.BasicAck(deliveryTag, false), Times.Once());
         }
@@ -573,7 +573,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 10,
                 (scope, @event) => throw new Exception());
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.QueueDeclare(
@@ -642,7 +642,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 10,
                 (scope, @event) => throw new Exception());
 
-            autoResetEvent.WaitOne();
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
             _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
                 It.IsAny<KeyValuePair<string, object>[]>()));
