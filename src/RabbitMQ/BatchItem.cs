@@ -1,8 +1,10 @@
-namespace Seedwork.CQRS.Bus.Core
+using Seedwork.CQRS.Bus.Core;
+
+namespace Seedwork.CQRS.Bus.RabbitMQ
 {
     public class BatchItem
     {
-        public BatchItem(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
+        public BatchItem(Exchange exchange, Queue queue, RoutingKey routingKey, IPublishMessage message)
         {
             Exchange = exchange;
             Queue = queue;
@@ -13,6 +15,6 @@ namespace Seedwork.CQRS.Bus.Core
         public Exchange Exchange { get; }
         public Queue Queue { get; }
         public RoutingKey RoutingKey { get; }
-        public Message Message { get; }
+        public IPublishMessage Message { get; }
     }
 }

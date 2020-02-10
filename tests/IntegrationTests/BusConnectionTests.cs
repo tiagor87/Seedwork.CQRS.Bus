@@ -76,21 +76,21 @@ namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}")
                 .WithAutoDelete();
             var routingKey = RoutingKey.Create(queue.Name.Value);
-            object data = "Notification message";
-            var message = Message.Create(data, 10);
+            var data = "Notification message";
+            var options = new MessageOptions(exchange, queue, 10);
+            var message = new PublishMessage(options, 10, 0);
 
             var autoResetEvent = new AutoResetEvent(false);
             _connectionFixture.Connection.PublishSuccessed += _ => autoResetEvent.Set();
-
             _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
             autoResetEvent.WaitOne();
 
             var responseMessage = _connectionFixture.Connection.GetMessage(queue);
             responseMessage.Should().NotBeNull();
-            responseMessage.Data.Should().Be(data);
+            responseMessage.GetData<string>().Should().Be(data);
             responseMessage.AttemptCount.Should().Be(1);
-            responseMessage.MaxAttempts.Should().Be(10);
+            responseMessage.Options.MaxAttempts.Should().Be(10);
         }
 
         [Fact]
@@ -99,7 +99,7 @@ namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
             var routingKey = RoutingKey.Create(queue.Name.Value);
-            var message = new TestMessage<string>(null, 1, 1, null, null);
+            var message = new PublishMessage(new MessageOptions(exchange, queue, 1), "message");
 
             var autoResetEvent = new AutoResetEvent(false);
 
@@ -175,7 +175,7 @@ namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
             _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
 
             IServiceScope callbackScope = null;
-            string callbackMessage = null;
+            IConsumerMessage callbackMessage = null;
 
             var autoResetEvent = new AutoResetEvent(false);
 
@@ -191,7 +191,7 @@ namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
             autoResetEvent.WaitOne();
 
             callbackScope.Should().NotBeNull();
-            callbackMessage.Should().Be(notification);
+            callbackMessage.GetData<string>().Should().Be(notification);
         }
     }
 }

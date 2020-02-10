@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,6 +12,7 @@ using Moq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Seedwork.CQRS.Bus.Core;
+using Seedwork.CQRS.Bus.RabbitMQ;
 using Xunit;
 using ExchangeType = Seedwork.CQRS.Bus.Core.ExchangeType;
 
@@ -104,8 +106,8 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
             const ushort deliveryTag = 1;
 
-            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ThrowsAsync(new Exception("Test message"))
+            _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
+                .ThrowsAsync(new SerializationException("Test message"))
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -143,7 +145,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 queue,
                 routingKey,
                 10,
-                (scope, @event) => Task.CompletedTask);
+                async (scope, @event) => await @event.GetDataAsync<string>());
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -178,7 +180,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
@@ -222,7 +224,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
@@ -242,8 +244,8 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.CreateBasicProperties(), Times.Once());
             _basicPropertiesMock.VerifySet(x => x.Headers = new Dictionary<string, object>());
-            headersMock.Verify(x => x.Add(nameof(Message.MaxAttempts), It.IsAny<object>()));
-            headersMock.Verify(x => x.Add(nameof(Message.AttemptCount), It.IsAny<object>()));
+            headersMock.Verify(x => x.Add(nameof(ConsumerMessage.Options.MaxAttempts), It.IsAny<object>()));
+            headersMock.Verify(x => x.Add(nameof(ConsumerMessage.AttemptCount), It.IsAny<object>()));
         }
 
         [Fact]
@@ -253,7 +255,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             var exchange = Exchange.Create("test", ExchangeType.Direct);
             var routingKey = RoutingKey.Create("test.route");
             var body = Encoding.UTF8.GetBytes("test");
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
 
@@ -291,7 +293,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
@@ -341,7 +343,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
@@ -382,7 +384,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
                 .ReturnsAsync(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
@@ -417,7 +419,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
             const ushort deliveryTag = 1;
 
-            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+            _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
                 .ReturnsAsync("test")
                 .Verifiable();
 
@@ -479,7 +481,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
             const ushort deliveryTag = 1;
 
-            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+            _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
                 .ReturnsAsync("test")
                 .Verifiable();
 
@@ -534,7 +536,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var loggerMock = new Mock<IBusLogger>();
 
-            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+            _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
                 .ReturnsAsync("test")
                 .Verifiable();
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBusLogger)))
@@ -604,7 +606,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
             const ushort deliveryTag = 1;
 
-            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+            _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
                 .ReturnsAsync("test")
                 .Verifiable();
 

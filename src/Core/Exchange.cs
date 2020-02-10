@@ -29,7 +29,7 @@ namespace Seedwork.CQRS.Bus.Core
         public bool IsInternal { get; set; }
         public IReadOnlyDictionary<string, object> Arguments => new ReadOnlyDictionary<string, object>(_arguments);
         public static Exchange Default => new Exchange();
-        internal bool IsDefault { get; }
+        public bool IsDefault { get; }
 
         public static Exchange Create(string name, ExchangeType type)
         {
@@ -96,12 +96,6 @@ namespace Seedwork.CQRS.Bus.Core
             _arguments.Add(key, exchangeName.Value);
 
             return this;
-        }
-
-        protected internal void Declare(IModel channel)
-        {
-            if (IsDefault) return;
-            channel.ExchangeDeclare(Name.Value, Type.Value, Durability.IsDurable, IsAutoDelete, _arguments);
         }
     }
 }

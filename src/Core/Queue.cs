@@ -178,30 +178,5 @@ namespace Seedwork.CQRS.Bus.Core
 
             return this;
         }
-
-        protected internal void Declare(IModel channel)
-        {
-            channel.QueueDeclare(Name.Value, Durability.IsDurable, false, IsAutoDelete, _arguments);
-        }
-
-        protected internal void Bind(IModel channel, Exchange exchange, RoutingKey routingKey)
-        {
-            if (exchange.IsDefault) return;
-            channel.QueueBind(Name.Value, exchange.Name.Value, routingKey.Value, _arguments);
-        }
-
-        protected internal Queue CreateRetryQueue(TimeSpan ttl)
-        {
-            return Create($"{Name.Value}-retry")
-                .WithDurability(Durability.Durable)
-                .MessagesExpiresIn(ttl)
-                .SendExpiredMessagesTo(Exchange.Default, RoutingKey.Create(Name.Value));
-        }
-
-        protected internal Queue CreateFailedQueue()
-        {
-            return Create($"{Name.Value}-failed")
-                .WithDurability(Durability.Durable);
-        }
     }
 }

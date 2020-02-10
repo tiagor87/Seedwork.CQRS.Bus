@@ -2,6 +2,7 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Seedwork.CQRS.Bus.Core;
+using Seedwork.CQRS.Bus.RabbitMQ;
 
 namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
 {

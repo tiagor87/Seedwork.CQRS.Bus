@@ -1,0 +1,11 @@
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.deps.json
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.dll
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.pdb
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.dll
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.pdb
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.csprojAssemblyReference.cache
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.AssemblyInfoInputs.cache
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.AssemblyInfo.cs
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.csproj.CopyComplete
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.dll
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\RabbitMQ\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.RabbitMQ.pdb

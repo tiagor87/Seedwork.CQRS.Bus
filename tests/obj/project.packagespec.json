@@ -1,0 +1,83 @@
+﻿{
+  "version": "1.0.0",
+  "restore": {
+    "projectUniqueName": "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\tests\\Seedwork.CQRS.Bus.Tests.csproj",
+    "projectName": "Seedwork.CQRS.Bus.Tests",
+    "projectPath": "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\tests\\Seedwork.CQRS.Bus.Tests.csproj",
+    "outputPath": "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\tests\\obj\\",
+    "projectStyle": "PackageReference",
+    "fallbackFolders": [
+      "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
+    ],
+    "originalTargetFrameworks": [
+      "netcoreapp2.2"
+    ],
+    "sources": {
+      "https://api.nuget.org/v3/index.json": {}
+    },
+    "frameworks": {
+      "netcoreapp2.2": {
+        "projectReferences": {
+          "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\src\\Core\\Seedwork.CQRS.Bus.Core.csproj": {
+            "projectPath": "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\src\\Core\\Seedwork.CQRS.Bus.Core.csproj"
+          },
+          "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\src\\RabbitMQ\\Seedwork.CQRS.Bus.RabbitMQ.csproj": {
+            "projectPath": "C:\\Dev\\OpenSource\\Seedwork.CQRS.Bus\\src\\RabbitMQ\\Seedwork.CQRS.Bus.RabbitMQ.csproj"
+          }
+        }
+      }
+    },
+    "warningProperties": {
+      "warnAsError": [
+        "NU1605"
+      ]
+    }
+  },
+  "frameworks": {
+    "netcoreapp2.2": {
+      "dependencies": {
+        "FluentAssertions": {
+          "target": "Package",
+          "version": "[5.9.0, )"
+        },
+        "Microsoft.AspNetCore.Mvc.Testing": {
+          "target": "Package",
+          "version": "[2.2.0, )"
+        },
+        "Microsoft.NET.Test.Sdk": {
+          "target": "Package",
+          "version": "[16.2.0, )"
+        },
+        "Microsoft.NETCore.App": {
+          "suppressParent": "All",
+          "target": "Package",
+          "version": "[2.2.0, )",
+          "autoReferenced": true
+        },
+        "Moq": {
+          "target": "Package",
+          "version": "[4.13.1, )"
+        },
+        "xunit": {
+          "target": "Package",
+          "version": "[2.4.0, )"
+        },
+        "xunit.runner.visualstudio": {
+          "target": "Package",
+          "version": "[2.4.0, )"
+        }
+      },
+      "imports": [
+        "net461",
+        "net462",
+        "net47",
+        "net471",
+        "net472",
+        "net48"
+      ],
+      "assetTargetFallback": true,
+      "warn": true,
+      "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\3.1.101\\RuntimeIdentifierGraph.json"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.deps.json
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.dll
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\bin\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.pdb
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.csprojAssemblyReference.cache
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.AssemblyInfoInputs.cache
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.AssemblyInfo.cs
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.dll
+C:\Dev\OpenSource\Seedwork.CQRS.Bus\src\Core\obj\Debug\netstandard2.0\Seedwork.CQRS.Bus.Core.pdb
