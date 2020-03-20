@@ -265,10 +265,8 @@ namespace Seedwork.CQRS.Bus.RabbitMQ
 
         private void CompleteMessage(IConsumerMessage consumerMessage)
         {
-            if (consumerMessage is IRabbitMqConsumerMessage m)
-            {
-                m.Channel.BasicAck(m.Event.DeliveryTag, false);
-            }
+            var message = consumerMessage as IRabbitMqConsumerMessage;
+            message?.Channel.BasicAck(message.Event.DeliveryTag, false);
         }
 
         private void RetryMessage(IConsumerMessage consumerMessage)
@@ -324,7 +322,7 @@ namespace Seedwork.CQRS.Bus.RabbitMQ
                                         var basicProperties = channel.CreateBasicProperties();
                                         basicProperties.AddAttemptHeaders(message);
                                         batch.Add(exchange.Name.Value, routingKey.Value, false,
-                                            basicProperties, message.Body);
+                                            basicProperties, message.GetBody(_serializer));
                                     }
                                 }
 

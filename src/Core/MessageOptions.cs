@@ -15,10 +15,6 @@
         {
         }
         
-        public MessageOptions(Exchange exchange, Queue queue, int maxAttempts) : this(exchange, queue, null, maxAttempts, null)
-        {
-        }
-        
         public Exchange Exchange { get; }
         public Queue Queue { get; }
         public int MaxAttempts { get; }

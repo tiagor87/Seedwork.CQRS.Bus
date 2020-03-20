@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Threading.Tasks;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Seedwork.CQRS.Bus.Core;
@@ -48,6 +47,7 @@ namespace Seedwork.CQRS.Bus.RabbitMQ
             _event = @event;
             _maxAttempts = GetHeaderValue("MaxAttempts", 5);
             _attemptCount = GetHeaderValue("AttemptCount", 0);
+            _attemptCount++; // The header loads last attempt. This is a new one.
             
             return this;
         }
@@ -67,15 +67,15 @@ namespace Seedwork.CQRS.Bus.RabbitMQ
         public IRabbitMqConsumerMessage Build()
         {
             var options = new MessageOptions(_exchange, _queue, null, _maxAttempts, _serializer); 
-            var message =  new ConsumerMessage(
+            return new RabbitMqConsumerMessage(
                 options,
                 _event.Body,
                 _attemptCount,
                 _onSuccess,
                 _onRetry,
-                _onFail);
-            var rabbitMqMessage = new RabbitMqConsumerMessage(message, _channel, _event);
-            return rabbitMqMessage;
+                _onFail,
+                _channel,
+                _event);
         }
 
         private int GetHeaderValue(string key, int defaultValue)

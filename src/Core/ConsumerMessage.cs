@@ -6,10 +6,12 @@ namespace Seedwork.CQRS.Bus.Core
     public sealed class PublishMessage : IPublishMessage
     {
         private readonly object _data;
+        private byte[] _body;
 
         public PublishMessage(MessageOptions options, object data, int attemptCount)
         {
             _data = data;
+            _body = Array.Empty<byte>();
             Options = options;
             AttemptCount = attemptCount;
         }
@@ -19,11 +21,23 @@ namespace Seedwork.CQRS.Bus.Core
         }
 
         public MessageOptions Options { get; }
-        public byte[] Body => Options.Serializer.Serialize(_data);
         public int AttemptCount { get; }
+        public byte[] GetBody()
+        {
+            return GetBody(Options.Serializer);
+        }
+
+        public byte[] GetBody(IBusSerializer serializer)
+        {
+            if (serializer == null) throw new ArgumentNullException(nameof(serializer));
+            if (_data is IConsumerMessage consumerMessage) return consumerMessage.Body;
+            return _body.Length == 0
+                ? _body = serializer.Serialize(_data)
+                : _body;
+        }
     }
     
-    public sealed class ConsumerMessage : IConsumerMessage
+    public class ConsumerMessage : IConsumerMessage
     {
         private readonly Action<IConsumerMessage> _onSuccess;
         private readonly Action<IConsumerMessage> _onRetry;
@@ -43,28 +57,34 @@ namespace Seedwork.CQRS.Bus.Core
             _onFail = onFail;
             Options = options;
             AttemptCount = attemptCount;
-            
         }
 
         public MessageOptions Options { get; }
         public byte[] Body { get; }
         public Exception Error { get; private set; }
         public int AttemptCount { get; }
+
         public async Task<T> GetDataAsync<T>() => await Options.Serializer.DeserializeAsync<T>(Body);
         public T GetData<T>() => Options.Serializer.Deserialize<T>(Body);
         public void Success()
         {
             _onSuccess(this);
         }
+
         public void Fail<T>(T error) where T: Exception
         {
             Error = error;
-            if (AttemptCount < Options.MaxAttempts)
+            if (CanRetry())
             {
                 _onRetry(new RetryConsumerMessage(this));
                 return;
             }
             _onFail(this);
+        }
+        
+        private bool CanRetry()
+        {
+            return AttemptCount < Options.MaxAttempts;
         }
     }
     

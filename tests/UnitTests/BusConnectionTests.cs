@@ -239,7 +239,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
+            autoResetEvent.WaitOne();
 
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.CreateBasicProperties(), Times.Once());
@@ -343,8 +343,8 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             var headersMock = new Mock<IDictionary<string, object>>();
 
-            _busSerializerMock.Setup(x => x.SerializeAsync(It.IsAny<object>()))
-                .ReturnsAsync(body)
+            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -358,7 +358,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             _busConnection.Publish(exchange, queue, routingKey, notification);
 
-            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
+            autoResetEvent.WaitOne();
 
             _publishBatchMock.VerifyAll();
 
@@ -457,7 +457,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
                 .Verifiable();
 
-            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(30));
 
             isExecuted.Should().BeTrue();
             _channelMock.Verify(x => x.BasicQos(0, 10, false), Times.Once());
@@ -609,6 +609,18 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             _busSerializerMock.Setup(x => x.DeserializeAsync<string>(body))
                 .ReturnsAsync("test")
                 .Verifiable();
+            
+            _basicPropertiesMock
+                .Setup(x => x.IsHeadersPresent())
+                .Returns(true)
+                .Verifiable();
+            _basicPropertiesMock
+                .SetupGet(x => x.Headers)
+                .Returns(new Dictionary<string, object>
+                {
+                    { "MaxAttempts", "1" }
+                })
+                .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
 
@@ -649,7 +661,7 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
                 10,
                 (scope, @event) => throw new Exception());
 
-            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(30));
 
             _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
                 It.IsAny<KeyValuePair<string, object>[]>()));

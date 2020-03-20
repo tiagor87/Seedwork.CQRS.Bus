@@ -6,12 +6,16 @@ namespace Seedwork.CQRS.Bus.Core
     public interface IPublishMessage
     {
         MessageOptions Options { get; }
-        byte[] Body { get; }
         int AttemptCount { get; }
+        byte[] GetBody();
+        byte[] GetBody(IBusSerializer serializer);
     }
     
-    public interface IConsumerMessage : IPublishMessage
+    public interface IConsumerMessage
     {
+        MessageOptions Options { get; }
+        int AttemptCount { get; }
+        byte[] Body { get; }
         Exception Error { get; }
         Task<T> GetDataAsync<T>();
         T GetData<T>();
