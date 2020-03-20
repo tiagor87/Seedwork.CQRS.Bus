@@ -22,8 +22,8 @@ namespace Seedwork.CQRS.Bus.Core
             IsDefault = true;
         }
 
-        public ExchangeName Name { get; private set; }
-        public ExchangeType Type { get; private set; }
+        public ExchangeName Name { get; }
+        public ExchangeType Type { get; }
         public Durability Durability { get; private set; }
         public bool IsAutoDelete { get; private set; }
         public bool IsInternal { get; set; }

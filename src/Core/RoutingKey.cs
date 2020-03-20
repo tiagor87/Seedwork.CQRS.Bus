@@ -11,7 +11,7 @@ namespace Seedwork.CQRS.Bus.Core
             Value = value;
         }
 
-        public string Value { get; private set; }
+        public string Value { get; }
 
         public static RoutingKey Create(string routing)
         {

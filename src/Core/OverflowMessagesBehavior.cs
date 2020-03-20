@@ -10,7 +10,7 @@ namespace Seedwork.CQRS.Bus.Core
             Value = value;
         }
 
-        public string Value { get; private set; }
+        public string Value { get; }
 
         public static OverflowMessagesBehavior DropHead => new OverflowMessagesBehavior("drop-head");
         public static OverflowMessagesBehavior RejectPublish => new OverflowMessagesBehavior("reject-publish");
