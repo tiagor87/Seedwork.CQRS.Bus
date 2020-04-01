@@ -31,7 +31,6 @@ namespace Seedwork.CQRS.Bus.Core
         private IConnection _consumerConnection;
         private bool _disposed;
         private IConnection _publisherConnection;
-        private int _maxTasks;
 
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
