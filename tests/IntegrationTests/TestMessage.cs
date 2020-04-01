@@ -38,8 +38,7 @@ namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
                 (RoutingKey) null,
                 serializer,
                 @event,
-                onDone,
-                onFail);
+                (onDone, onFail));
         }
     }
 }

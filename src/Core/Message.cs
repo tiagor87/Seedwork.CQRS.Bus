@@ -167,8 +167,7 @@ namespace Seedwork.CQRS.Bus.Core
             RoutingKey routingKey,
             IBusSerializer serializer,
             BasicDeliverEventArgs @event,
-            Action<Message<T>> onDone,
-            Action<Exception, Message<T>> onFail)
+            ValueTuple<Action<Message<T>>, Action<Exception, Message<T>>> actions)
         {
             var data = serializer.Deserialize<T>(@event.Body).GetAwaiter().GetResult();
             if (@event.BasicProperties.Headers == null ||
@@ -183,6 +182,7 @@ namespace Seedwork.CQRS.Bus.Core
                 attempts = 0;
             }
 
+            var (onDone, onFail) = actions;
             var attemptCount = (int) attempts;
             return new Message<T>(
                     @event.DeliveryTag,

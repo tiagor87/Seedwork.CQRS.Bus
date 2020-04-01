@@ -31,6 +31,7 @@ namespace Seedwork.CQRS.Bus.Core
         private IConnection _consumerConnection;
         private bool _disposed;
         private IConnection _publisherConnection;
+        private int _maxTasks;
 
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
@@ -134,16 +135,7 @@ namespace Seedwork.CQRS.Bus.Core
             var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += (sender, args) =>
             {
-                while (tasks.Count == tasks.Capacity)
-                {
-                    lock (_sync)
-                    {
-                        tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
-                    }
-
-                    Thread.Sleep(100);
-                }
-
+                WaitForFreeSlots(tasks, _options.Value.ConsumerMaxParallelTasks);
                 try
                 {
                     var task = Task.Run(async () =>
@@ -151,8 +143,7 @@ namespace Seedwork.CQRS.Bus.Core
                         try
                         {
                             var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args,
-                                OnDone,
-                                OnFail);
+                                (OnDone, OnFail));
                             using (var scope = _serviceScopeFactory.CreateScope())
                             {
                                 try
@@ -232,6 +223,20 @@ namespace Seedwork.CQRS.Bus.Core
         ~BusConnection()
         {
             Dispose(false);
+        }
+        
+        private static void WaitForFreeSlots(List<Task> tasks, int maxParallelTasks)
+        {
+            int freeSlots;
+            do
+            {
+                tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
+                Thread.Sleep(100);
+                lock (_sync)
+                {
+                    freeSlots = maxParallelTasks - tasks.Count;
+                }
+            } while (freeSlots <= 0);
         }
 
         private static IConnectionFactory GetConnectionFactory(Uri connectionString)
