@@ -227,15 +227,20 @@ namespace Seedwork.CQRS.Bus.Core
         private static void WaitForFreeSlots(List<Task> tasks, int maxParallelTasks)
         {
             int freeSlots;
-            do
+            lock (_sync)
             {
-                tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
+                freeSlots = maxParallelTasks - tasks.Count;
+            }
+
+            while (freeSlots <= 0)
+            {
                 Thread.Sleep(100);
+                tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
                 lock (_sync)
                 {
                     freeSlots = maxParallelTasks - tasks.Count;
                 }
-            } while (freeSlots <= 0);
+            }
         }
 
         private static IConnectionFactory GetConnectionFactory(Uri connectionString)
