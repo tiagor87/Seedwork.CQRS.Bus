@@ -3,7 +3,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tiagor87_Seedwork.CQRS.Bus&metric=alert_status)](https://sonarcloud.io/dashboard?id=tiagor87_Seedwork.CQRS.Bus)
 [![NuGet](https://buildstats.info/nuget/Seedwork.CQRS.Bus.Core)](http://www.nuget.org/packages/Seedwork.CQRS.Bus.Core)
 
-# Seedwork.CQRS.Bus
+# Seedwork.CQRS.Bus [EN]/[[BR](README-PT-BR.md)]
 
 __Seedwork.CQRS.Bus__ is a project to make RabbitMQ easier to use and control some basic flows.
 
@@ -13,15 +13,34 @@ Register __BusConnection__ as __singleton__ in your project.
 
 __BusConnection__ requires:
 - BusConnectionString: RabbitMQ connection string;
-- IBusSerializer: Serializador padrão;
-- IServiceScopeFactory: Fábrica de escopo para injeção de dependência.
+- IBusSerializer: The default serializer;
+- IServiceScopeFactory: Scope factory for DI.
 
-```c#
+```csharp
 services
-    .AddSingleton(BusConnectionString.Create("amqp://guest:guest@localhost/"))
-    .AddSingleton<IBusSerializer, BusSerializer>()
-    .AddSingleton<BusConnection>()
-    .Configure<BusConnectionOptions>(configuration.GetSection("BusConnectionOptions"))
+    .AddBusCore(
+        options =>
+        {
+            options
+                .SetOptions("BusConnectionOptions")
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .SetSerializer<BusSerializer>();
+        });
+```
+
+or
+
+```csharp
+services
+    .AddBusCore(
+        configuration,
+        options =>
+        {
+            options
+                .SetOptions("BusConnectionOptions")
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .SetSerializer<BusSerializer>();
+        });
 ```
 
 ## Publish
@@ -72,9 +91,9 @@ _connectionFixture.Connection.Subscribe<string>(
 
 ### When fails to process a message, whats happens?
 
-* When a message fails to be processed, the application will requeue it to the retry-queue with a message expiration, to send it back to the main queue later;
+* When a message fails to be processed, the application will re-queue it to the retry-queue with a message expiration, to send it back to the main queue later;
 * When the max attempts is achivied, the application will route it to failed-queue;
-* When system fails to requeue, it will nack the message.
+* When the system fails to re-queue, it will nack the message.
 
 #### How can I configure the max attempts?
 
@@ -95,7 +114,7 @@ await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message
 ## What can I configure?
 
 * **PublisherBufferSize** (default: 1000): Message's limit to publish at once;
-* **PublisherBufferTtlInMilliseconds** (default: 5000): Publish messages when limit is not achieved; 
+* **PublisherBufferTtlInMilliseconds** (default: 5000): Publish messages when the limit is not achieved; 
 * **ConnectionMaxRetry** (default: 10): Max attempts to connect to bus before fails; 
 * **ConnectionRetryDelayInMilliseconds** (default: 500): Delay between connection attempts;
 * **ConsumerMaxParallelTasks** (default: 500): Thread's limit to process; 
