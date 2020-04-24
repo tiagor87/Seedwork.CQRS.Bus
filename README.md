@@ -3,7 +3,7 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tiagor87_Seedwork.CQRS.Bus&metric=alert_status)](https://sonarcloud.io/dashboard?id=tiagor87_Seedwork.CQRS.Bus)
 [![NuGet](https://buildstats.info/nuget/Seedwork.CQRS.Bus.Core)](http://www.nuget.org/packages/Seedwork.CQRS.Bus.Core)
 
-# Seedwork.CQRS.Bus [EN]/[[BR](README-PT-BR.md)]
+# Seedwork.CQRS.Bus [EN]/[[BR](README-PTBR.md)]
 
 __Seedwork.CQRS.Bus__ is a project to make RabbitMQ easier to use and control some basic flows.
 
