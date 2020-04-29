@@ -33,7 +33,6 @@ stages:
               extraProperties: |
                 sonar.exclusions=**/*test*
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll
-                sonar.cs.cobertura.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
@@ -48,13 +47,20 @@ stages:
             inputs:
               projects: '**/*.csproj'
               arguments: '--configuration Release'
+              
+          - task: DotNetCoreCLI@2
+              displayName: 'Test'
+              inputs:
+                command: test
+                projects: 'tests/**/*.csproj'
+                arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
           - task: DotNetCoreCLI@2
             displayName: 'Test'
             inputs:
               command: test
               projects: 'tests/**/*.csproj'
-              arguments: '--configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
+              arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
@@ -78,6 +84,7 @@ stages:
           - task: PublishCodeCoverageResults@1
             displayName: 'Publish Coverage Results'
             inputs:
+              codeCoverageTool: 'cobertura'
               summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
 
           - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
