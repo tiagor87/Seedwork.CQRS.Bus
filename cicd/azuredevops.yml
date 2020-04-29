@@ -31,8 +31,7 @@ stages:
               projectName: '$(Build.DefinitionName)'
               projectVersion: '$(Build.BuildNumber)'
               extraProperties: |
-                sonar.exclusions=**/*test*
-                sonar.exclusions=**/lib/**,**/obj/**,**/*.dll
+                sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
@@ -102,7 +101,7 @@ stages:
             displayName: 'Download Package Artifact'
             inputs:
               artifactName: 'drop'
-              itemPattern: 'drop/**/*.nupkg'
+              itemPattern: '**/*.nupkg'
               downloadPath: '$(System.ArtifactsDirectory)'
 
           - task: NuGetCommand@2
