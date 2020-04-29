@@ -227,5 +227,14 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             queue.Durability.Should().Be(Durability.Transient);
             queue.IsAutoDelete.Should().BeFalse();
         }
+        
+        [Fact]
+        public void GivenQueueWhenNamesAreSameShouldBeEquals()
+        {
+            var queue1 = Queue.Create("seedwork.cqrs");
+            var queue2 = Queue.Create("seedwork.cqrs");
+
+            queue1.Should().Be(queue2);
+        }
     }
 }

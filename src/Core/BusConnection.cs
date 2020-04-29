@@ -68,12 +68,13 @@ namespace Seedwork.CQRS.Bus.Core
                     return _publisherConnection;
                 }
 
+                var retryDelay = TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds);
                 lock (_sync)
                 {
-                    return _publisherConnection ?? (_publisherConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(_options.Value.ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
-                               .Execute(() => _connectionFactory.CreateConnection()));
+                    return _publisherConnection ??= Policy.Handle<Exception>()
+                        .WaitAndRetry(_options.Value.ConnectionMaxRetry,
+                            _ => retryDelay)
+                        .Execute(() => _connectionFactory.CreateConnection());
                 }
             }
         }
@@ -87,13 +88,14 @@ namespace Seedwork.CQRS.Bus.Core
                     return _consumerConnection;
                 }
 
+                var retryDelay = TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds);
                 lock (_sync)
                 {
-                    return _consumerConnection ?? (_consumerConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(
-                                   _options.Value.ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
-                               .Execute(() => _connectionFactory.CreateConnection()));
+                    return _consumerConnection ??= Policy.Handle<Exception>()
+                        .WaitAndRetry(
+                            _options.Value.ConnectionMaxRetry,
+                            _ => retryDelay)
+                        .Execute(() => _connectionFactory.CreateConnection());
                 }
             }
         }
@@ -104,7 +106,6 @@ namespace Seedwork.CQRS.Bus.Core
             GC.SuppressFinalize(this);
         }
 
-        public int PublisherBufferCount => _publisherBuffer.Count;
         public event PublishSuccessed PublishSuccessed;
         public event PublishFailed PublishFailed;
 
@@ -135,7 +136,7 @@ namespace Seedwork.CQRS.Bus.Core
             var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += (sender, args) =>
             {
-                WaitForFreeSlots(tasks, _options.Value.ConsumerMaxParallelTasks);
+                tasks.WaitForFreeSlots(_options.Value.ConsumerMaxParallelTasks);
                 try
                 {
                     var task = Task.Run(async () =>
@@ -223,25 +224,6 @@ namespace Seedwork.CQRS.Bus.Core
         ~BusConnection()
         {
             Dispose(false);
-        }
-        
-        private static void WaitForFreeSlots(List<Task> tasks, int maxParallelTasks)
-        {
-            int freeSlots;
-            lock (_sync)
-            {
-                freeSlots = maxParallelTasks - tasks.Count;
-            }
-
-            while (freeSlots <= 0)
-            {
-                Thread.Sleep(100);
-                tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
-                lock (_sync)
-                {
-                    freeSlots = maxParallelTasks - tasks.Count;
-                }
-            }
         }
 
         private static IConnectionFactory GetConnectionFactory(Uri connectionString)
