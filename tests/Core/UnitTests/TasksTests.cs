@@ -28,7 +28,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             tasks.Add(Task.Delay(1000));
 
-            tasks.ExecutionTimeOf(s => s.WaitForFreeSlots()).Should().BeCloseTo(TimeSpan.FromMilliseconds(1000), TimeSpan.FromMilliseconds(300));
+            tasks.ExecutionTimeOf(s => s.WaitForFreeSlots()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(1000));
         }
 
         [Fact]

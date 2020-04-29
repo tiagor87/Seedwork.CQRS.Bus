@@ -46,17 +46,17 @@ stages:
             displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
-              arguments: '--configuration Release'
+              arguments: '--no-restore --configuration Release'
               
           - task: DotNetCoreCLI@2
-            displayName: 'Test'
+            displayName: 'Test - opencover'
             inputs:
               command: test
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
           - task: DotNetCoreCLI@2
-            displayName: 'Test'
+            displayName: 'Test - cobertura'
             inputs:
               command: test
               projects: 'tests/**/*.csproj'
