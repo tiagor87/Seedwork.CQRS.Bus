@@ -1,11 +1,10 @@
 using System;
 using FluentAssertions;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.Tests.UnitTests
+namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 {
-    public class ExchangeNameTests
+    public class QueueNameTests
     {
         [Theory]
         [InlineData("")]
@@ -13,21 +12,20 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
         [InlineData(null)]
         public void GivenNameWhenEmptyShouldThrowsArgumentNullException(string name)
         {
-            Func<ExchangeName> action = () => ExchangeName.Create(name);
+            Func<QueueName> action = () => QueueName.Create(name);
             action.Should().Throw<ArgumentNullException>();
         }
 
         [Theory]
-        [InlineData("seedwork")]
         [InlineData("seedwork.cqrs")]
         [InlineData("seedwork.cqrs-bus")]
         [InlineData("seedwork.cqrs-bus.core")]
         public void GivenNameShouldCreate(string name)
         {
-            var exchangeName = ExchangeName.Create(name);
+            var queueName = QueueName.Create(name);
 
-            exchangeName.Should().NotBeNull();
-            exchangeName.Value.Should().Be(name);
+            queueName.Should().NotBeNull();
+            queueName.Value.Should().Be(name);
         }
 
         [Theory]
@@ -36,19 +34,19 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
         [InlineData("seedwork.cqrs-bus.core ", "seedwork.cqrs-bus.core")]
         public void GivenNameWhenSpaceAroundShouldTrim(string name, string expected)
         {
-            var exchangeName = ExchangeName.Create(name);
+            var queueName = QueueName.Create(name);
 
-            exchangeName.Should().NotBeNull();
-            exchangeName.Value.Should().Be(expected);
+            queueName.Should().NotBeNull();
+            queueName.Value.Should().Be(expected);
         }
 
         [Fact]
         public void GivenNamesWhenValuesAreSameShouldBeEquals()
         {
-            var exchangeName1 = ExchangeName.Create("seedwork.cqrs");
-            var exchangeName2 = ExchangeName.Create("seedwork.cqrs");
+            var queueName1 = QueueName.Create("seedwork.cqrs");
+            var queueName2 = QueueName.Create("seedwork.cqrs");
 
-            exchangeName1.Should().Be(exchangeName2);
+            queueName1.Should().Be(queueName2);
         }
     }
 }

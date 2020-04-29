@@ -10,11 +10,9 @@ using Microsoft.Extensions.Options;
 using Moq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
-using ExchangeType = Seedwork.CQRS.Bus.Core.ExchangeType;
 
-namespace Seedwork.CQRS.Bus.Tests.UnitTests
+namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 {
     public class BusConnectionTests
     {

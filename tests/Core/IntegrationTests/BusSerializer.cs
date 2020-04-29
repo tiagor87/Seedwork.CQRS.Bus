@@ -1,9 +1,8 @@
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
-using Seedwork.CQRS.Bus.Core;
 
-namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
+namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 {
     public class BusSerializer : IBusSerializer
     {
