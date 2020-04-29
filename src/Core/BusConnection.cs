@@ -5,12 +5,12 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BufferList;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Polly;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using TRBufferList.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
@@ -104,6 +104,7 @@ namespace Seedwork.CQRS.Bus.Core
             GC.SuppressFinalize(this);
         }
 
+        public int PublisherBufferCount => _publisherBuffer.Count;
         public event PublishSuccessed PublishSuccessed;
         public event PublishFailed PublishFailed;
 
@@ -159,11 +160,11 @@ namespace Seedwork.CQRS.Bus.Core
                         catch (Exception exception)
                         {
                             _logger?.WriteException(nameof(Subscribe), exception,
-                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
+                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body.ToArray())));
                             var failedQueue = queue.CreateFailedQueue();
                             var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
                             Publish(Exchange.Default, failedQueue, failedRoutingKey,
-                                ErrorMessage.Create(args.Body, args.BasicProperties));
+                                ErrorMessage.Create(args.Body.ToArray(), args.BasicProperties));
                             channel.BasicNack(args.DeliveryTag, false, false);
                         }
                     });
@@ -250,7 +251,7 @@ namespace Seedwork.CQRS.Bus.Core
                 Uri = connectionString,
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
-                RequestedHeartbeat = 30,
+                RequestedHeartbeat = TimeSpan.FromSeconds(30),
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
@@ -332,7 +333,11 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 _logger?.WriteException(nameof(PublishBufferOnCleared), ex,
                     new KeyValuePair<string, object>("Events", items));
-                PublishFailed?.Invoke(items, ex);
+                if (PublishFailed == null)
+                {
+                    throw;
+                }
+                PublishFailed.Invoke(items, ex);
             }
         }
 

@@ -210,6 +210,43 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             callbackItems.Should().NotBeEmpty();
             callbackException.Should().NotBeNull();
         }
+        
+        [Fact]
+        public void GivenConnectionWhenPublishFailsShouldAndFailedCallbackNotConfiguredShouldThrow()
+        {
+            const string notification = "test";
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+
+            var headersMock = new Mock<IDictionary<string, object>>();
+
+            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+                .ReturnsAsync(body)
+                .Verifiable();
+            _basicPropertiesMock.Setup(x => x.Headers)
+                .Returns(headersMock.Object)
+                .Verifiable();
+
+            _publishBatchMock.SetupSequence(x => x.Publish())
+                .Throws(new Exception())
+                .Throws(new Exception())
+                .Throws(new Exception())
+                .Throws(new Exception())
+                .Throws(new Exception())
+                .Pass();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _busConnection.PublishSuccessed += _ => autoResetEvent.Set(); 
+            
+            _busConnection.Publish(exchange, queue, routingKey, notification);
+
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
+
+            _publishBatchMock.VerifyAll();
+        }
 
         [Fact]
         public void GivenConnectionWhenPublishShouldConfigureBasicPropertiesForRetry()

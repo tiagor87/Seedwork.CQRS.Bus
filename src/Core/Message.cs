@@ -169,7 +169,7 @@ namespace Seedwork.CQRS.Bus.Core
             BasicDeliverEventArgs @event,
             ValueTuple<Action<Message<T>>, Action<Exception, Message<T>>> actions)
         {
-            var data = serializer.Deserialize<T>(@event.Body).GetAwaiter().GetResult();
+            var data = serializer.Deserialize<T>(@event.Body.ToArray()).GetAwaiter().GetResult();
             if (@event.BasicProperties.Headers == null ||
                 !@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out var maxAttempts))
             {
