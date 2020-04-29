@@ -1,0 +1,100 @@
+name: $(Version_Major).$(Version_Minor)$(rev:.r)
+
+variables:
+  Sonar_ProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
+  Version_Major: '0'
+  Version_Minor: '0'
+
+stages:
+  - stage: Build
+    displayName: Build stage
+    jobs:
+      - job: Build
+        displayName: Build job
+        pool:
+          vmImage: ubuntu-latest
+          demands:
+            - java
+        steps:
+          - task: Bash@3
+            displayName: 'Run RabbitMQ container'
+            inputs:
+              targetType: 'inline'
+              script: 'docker run -p 5672:5672 -d rabbitmq:alpine'
+
+          - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+            displayName: 'Prepare analysis on SonarCloud'
+            inputs:
+              SonarCloud: SonarCloud
+              organization: 'tiagor87-github'
+              projectKey: '$(Sonar_ProjectKey)'
+              projectName: '$(Build.DefinitionName)'
+              projectVersion: '$(Build.BuildNumber)'
+              extraProperties: |
+                sonar.exclusions=**/*test*
+                sonar.exclusions=**/lib/**,**/obj/**,**/*.dll
+                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
+                sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: restore
+              projects: '**/*.csproj'
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              projects: '**/*.csproj'
+              arguments: '--configuration Release'
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              projects: 'tests/**/*.csproj'
+              arguments: '--configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
+
+          - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+            displayName: 'Run Code Analysis'
+
+          - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+            displayName: 'Publish Quality Gate Result'
+
+          - task: DotNetCoreCLI@2
+            displayName: Publish
+            inputs:
+              command: pack
+              packagesToPack: 'src/**/*.csproj'
+              nobuild: true
+              configurationToPack: 'Release'
+              versioningScheme: byBuildNumber
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Artifact'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              contents: '**/*.nupkg'
+              artifactName: 'drop'
+
+  - stage: Deploy
+    displayName: Deploy stage
+    jobs:
+      - job: Deploy
+        displayName: Deploy job
+        pool:
+          vmImage: vs2017-win2016
+        steps:
+          - task: DownloadPipelineArtifact@2
+            inputs:
+              artifactName: 'drop'
+              patterns: 'drop/**/*.nupkg'
+              downloadPath: '$(System.ArtifactsDirectory)'
+
+          - task: NuGetCommand@2
+            displayName: 'NuGet push'
+            inputs:
+              command: push
+              packagesToPush: '$(System.ArtifactsDirectory)/*.nupkg'
+              nuGetFeedType: external
+              publishFeedCredentials: Nuget
