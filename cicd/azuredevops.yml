@@ -54,6 +54,10 @@ stages:
               command: test
               projects: 'tests/**/*.csproj'
               arguments: '--configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
+              
+          - task: PublishCodeCoverageResults@1
+            inputs:
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
