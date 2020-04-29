@@ -21,7 +21,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)> _consumers;
+        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)> _consumers;
         private readonly IBusLogger _logger;
         private readonly IOptions<BusConnectionOptions> _options;
         private readonly BufferList<BatchItem> _publisherBuffer;
@@ -41,7 +41,7 @@ namespace Seedwork.CQRS.Bus.Core
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _options = options;
-            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)>();
+            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)>();
             _connectionFactory = connectionFactory;
             _publisherBuffer =
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
@@ -132,10 +132,10 @@ namespace Seedwork.CQRS.Bus.Core
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
+            var tasks = new Tasks(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += (sender, args) =>
             {
-                tasks.WaitForFreeSlots(_options.Value.ConsumerMaxParallelTasks);
+                tasks.WaitForFreeSlots();
                 try
                 {
                     var task = Task.Run(async () =>
@@ -168,10 +168,7 @@ namespace Seedwork.CQRS.Bus.Core
                             channel.BasicNack(args.DeliveryTag, false, false);
                         }
                     });
-                    lock (_sync)
-                    {
-                        tasks.Add(task);
-                    }
+                    tasks.Add(task);
                 }
                 catch (Exception ex)
                 {
@@ -335,8 +332,8 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     var key = consumerGroup.Key;
                     var value = consumerGroup.Value;
-                    var (channel, _, buffer) = value;
-                    buffer.Clear();
+                    var (channel, _, tasks) = value;
+                    tasks.Dispose();
                     channel.BasicCancel(key);
                     channel.Close();
                     channel.Dispose();
