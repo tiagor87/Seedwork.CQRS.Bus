@@ -108,6 +108,6 @@ stages:
             displayName: 'Publish on Nuget'
             inputs:
               command: push
-              packagesToPush: '$(System.ArtifactsDirectory)/*.nupkg'
+              packagesToPush: '$(System.ArtifactsDirectory)/drop/*.nupkg'
               nuGetFeedType: external
               publishFeedCredentials: Nuget
