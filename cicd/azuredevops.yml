@@ -3,7 +3,7 @@ name: $(Version_Major).$(Version_Minor)$(rev:.r)
 variables:
   Sonar_ProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
   Version_Major: '0'
-  Version_Minor: '0'
+  Version_Minor: '2'
 
 stages:
   - stage: Build
