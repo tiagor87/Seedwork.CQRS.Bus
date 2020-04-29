@@ -1,15 +1,17 @@
 using System;
+using System.Collections.Generic;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class ExchangeName
+    public class ExchangeName : ValueObject
     {
         private ExchangeName(string value)
         {
             Value = value;
         }
 
-        public string Value { get; private set; }
+        public string Value { get; }
         public static ExchangeName Default => new ExchangeName(string.Empty);
 
         public static ExchangeName Create(string name)
@@ -20,6 +22,11 @@ namespace Seedwork.CQRS.Bus.Core
             }
 
             return new ExchangeName(name.Trim());
+        }
+
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Value;
         }
     }
 }

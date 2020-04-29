@@ -1,6 +1,9 @@
+using System.Collections.Generic;
+using TRDomainDriven.Core;
+
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class ExchangeType
+    public class ExchangeType : ValueObject
     {
         private ExchangeType(string value)
         {
@@ -13,5 +16,9 @@ namespace Seedwork.CQRS.Bus.Core
         public static ExchangeType Direct => new ExchangeType("direct");
         public static ExchangeType Headers => new ExchangeType("headers");
         public static ExchangeType Topic => new ExchangeType("topic");
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Value;
+        }
     }
 }

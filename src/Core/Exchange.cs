@@ -1,10 +1,11 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using RabbitMQ.Client;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class Exchange
+    public class Exchange : ValueObject
     {
         private readonly IDictionary<string, object> _arguments = new Dictionary<string, object>();
 
@@ -22,11 +23,11 @@ namespace Seedwork.CQRS.Bus.Core
             IsDefault = true;
         }
 
-        public ExchangeName Name { get; private set; }
-        public ExchangeType Type { get; private set; }
+        public ExchangeName Name { get; }
+        public ExchangeType Type { get; }
         public Durability Durability { get; private set; }
         public bool IsAutoDelete { get; private set; }
-        public bool IsInternal { get; set; }
+        public bool IsInternal { get; private set; }
         public IReadOnlyDictionary<string, object> Arguments => new ReadOnlyDictionary<string, object>(_arguments);
         public static Exchange Default => new Exchange();
         internal bool IsDefault { get; }
@@ -102,6 +103,11 @@ namespace Seedwork.CQRS.Bus.Core
         {
             if (IsDefault) return;
             channel.ExchangeDeclare(Name.Value, Type.Value, Durability.IsDurable, IsAutoDelete, _arguments);
+        }
+
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Name;
         }
     }
 }

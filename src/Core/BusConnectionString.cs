@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class BusConnectionString
+    public class BusConnectionString : ValueObject
     {
         private BusConnectionString(Uri value)
         {
@@ -19,6 +21,11 @@ namespace Seedwork.CQRS.Bus.Core
             }
 
             return new BusConnectionString(uri);
+        }
+
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Value;
         }
     }
 }

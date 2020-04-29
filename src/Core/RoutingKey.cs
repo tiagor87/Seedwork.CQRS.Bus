@@ -1,8 +1,10 @@
 using System;
+using System.Collections.Generic;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class RoutingKey
+    public class RoutingKey : ValueObject
     {
         private RoutingKey(string value)
         {
@@ -19,6 +21,11 @@ namespace Seedwork.CQRS.Bus.Core
             }
 
             return new RoutingKey(routing.Trim());
+        }
+
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Value;
         }
     }
 }
