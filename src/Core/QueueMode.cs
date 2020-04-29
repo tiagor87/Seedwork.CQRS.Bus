@@ -1,9 +1,6 @@
-using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
-
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class QueueMode : ValueObject
+    public class QueueMode
     {
         private QueueMode(string value)
         {
@@ -14,10 +11,5 @@ namespace Seedwork.CQRS.Bus.Core
 
         public static QueueMode Lazy => new QueueMode("lazy");
         public static QueueMode Normal => new QueueMode(string.Empty);
-
-        protected override IEnumerable<object> GetAtomicValues()
-        {
-            yield return Value;
-        }
     }
 }

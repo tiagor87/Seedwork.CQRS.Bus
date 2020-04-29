@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class ExchangeName : ValueObject
+    public class ExchangeName
     {
         private ExchangeName(string value)
         {
@@ -22,11 +20,6 @@ namespace Seedwork.CQRS.Bus.Core
             }
 
             return new ExchangeName(name.Trim());
-        }
-
-        protected override IEnumerable<object> GetAtomicValues()
-        {
-            yield return Value;
         }
     }
 }

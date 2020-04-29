@@ -1,10 +1,8 @@
 using System;
-using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class QueueName : ValueObject
+    public class QueueName
     {
         private QueueName(string value)
         {
@@ -21,11 +19,6 @@ namespace Seedwork.CQRS.Bus.Core
             }
 
             return new QueueName(name.Trim());
-        }
-
-        protected override IEnumerable<object> GetAtomicValues()
-        {
-            yield return Value;
         }
     }
 }
