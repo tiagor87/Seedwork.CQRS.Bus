@@ -33,40 +33,34 @@ stages:
               extraProperties: |
                 sonar.exclusions=**/*test*
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll
+                sonar.cs.cobertura.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
           - task: DotNetCoreCLI@2
-            displayName: Restore
+            displayName: 'Restore'
             inputs:
               command: restore
               projects: '**/*.csproj'
 
           - task: DotNetCoreCLI@2
-            displayName: Build
+            displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
               arguments: '--configuration Release'
 
           - task: DotNetCoreCLI@2
-            displayName: Test
+            displayName: 'Test'
             inputs:
               command: test
               projects: 'tests/**/*.csproj'
-              arguments: '--configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
-              
-          - task: PublishCodeCoverageResults@1
-            inputs:
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
+              arguments: '--configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
 
-          - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
-            displayName: 'Publish Quality Gate Result'
-
           - task: DotNetCoreCLI@2
-            displayName: Publish
+            displayName: 'Pack Release'
             inputs:
               command: pack
               packagesToPack: 'src/**/*.csproj'
@@ -75,11 +69,19 @@ stages:
               versioningScheme: byBuildNumber
 
           - task: PublishBuildArtifacts@1
-            displayName: 'Publish Artifact'
+            displayName: 'Publish Package Artifact'
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
               contents: '**/*.nupkg'
               artifactName: 'drop'
+              
+          - task: PublishCodeCoverageResults@1
+            displayName: 'Publish Coverage Results'
+            inputs:
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
+
+          - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+            displayName: 'Publish Quality Gate Result'
 
   - stage: Deploy
     displayName: Deploy stage
@@ -90,13 +92,14 @@ stages:
           vmImage: vs2017-win2016
         steps:
           - task: DownloadPipelineArtifact@2
+            displayName: 'Download Package Artifact'
             inputs:
               artifactName: 'drop'
               patterns: 'drop/**/*.nupkg'
               downloadPath: '$(System.ArtifactsDirectory)'
 
           - task: NuGetCommand@2
-            displayName: 'NuGet push'
+            displayName: 'Publish on Nuget'
             inputs:
               command: push
               packagesToPush: '$(System.ArtifactsDirectory)/*.nupkg'
