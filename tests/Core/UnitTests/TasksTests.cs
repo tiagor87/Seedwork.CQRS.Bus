@@ -26,6 +26,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 };
 
                 tasks.Add(new Task(() => Task.Delay(1000).Wait()));
+                tasks.WaitForFreeSlots();
             };
 
             action.ExecutionTimeOf(s => s.Invoke()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(1000));
