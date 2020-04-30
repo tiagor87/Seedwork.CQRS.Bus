@@ -14,36 +14,34 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
         [Fact]
         public void GivenTasksShouldWaitForFreeSlot()
         {
-            var tasks = new Tasks(1)
+            Action action = () =>
             {
-                Task.Delay(500),
-                Task.Delay(100),
-                Task.Delay(750),
-                Task.Delay(900),
-                Task.Delay(950),
-                Task.Delay(999),
-                Task.Delay(100),
-                Task.Delay(10)
+                var tasks = new Tasks(1)
+                {
+                    new Task(() => Task.Delay(100).Wait()),
+                    new Task(() => Task.Delay(100).Wait()),
+                    new Task(() => Task.Delay(100).Wait()),
+                    new Task(() => Task.Delay(100).Wait()),
+                    new Task(() => Task.Delay(100).Wait())
+                };
+
+                tasks.Add(new Task(() => Task.Delay(1000).Wait()));
             };
 
-            tasks.Add(Task.Delay(1000));
-
-            tasks.ExecutionTimeOf(s => s.WaitForFreeSlots()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(1000));
+            action.ExecutionTimeOf(s => s.Invoke()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(1000));
         }
 
         [Fact]
         public async Task GivenTasksShouldAddTasks()
         {
-            var tasks = new Tasks(500);
+            var tasks = new Tasks(5);
             var addTasks = new List<Task>(); 
-            for (var i = 0; i < 1000; i++)
+            for (var i = 0; i < 10; i++)
             {
-                addTasks.Add(Task.Factory.StartNew(() => tasks.Add(Task.Delay(100))));
+                addTasks.Add(Task.Factory.StartNew(() => tasks.Add(new Task(() => Task.Delay(100).Wait()))));
             }
             await Task.WhenAll(addTasks);
-            tasks.Should().HaveCount(1000);
-            await Task.Delay(TimeSpan.FromMilliseconds(100));
-            tasks.WaitForFreeSlots();
+            await Task.Delay(500);
             tasks.Count().Should().Be(0);
         }
 
@@ -54,7 +52,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var tasks = new Tasks(500);
             for (var i = 0; i < 1000; i++)
             {
-                tasks.Add(Task.Factory.StartNew(() => Interlocked.Increment(ref value)));
+                tasks.Add(new Task(() => Interlocked.Increment(ref value)));
             }
             tasks.Dispose();
             value.Should().Be(1000);

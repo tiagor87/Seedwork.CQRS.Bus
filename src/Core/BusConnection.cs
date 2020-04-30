@@ -135,10 +135,9 @@ namespace Seedwork.CQRS.Bus.Core
             var tasks = new Tasks(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += (sender, args) =>
             {
-                tasks.WaitForFreeSlots();
                 try
                 {
-                    var task = Task.Run(async () =>
+                    var task = new Task(async () =>
                     {
                         try
                         {

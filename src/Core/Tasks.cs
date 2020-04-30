@@ -1,6 +1,9 @@
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Seedwork.CQRS.Bus.Core
@@ -9,8 +12,8 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private bool _disposed;
         private readonly int _capacity;
-        private readonly object _sync = new object();
-        private List<Task> _tasks = new List<Task>();
+        private ConcurrentDictionary<int, Task> _tasks = new ConcurrentDictionary<int, Task>();
+        private int _isRunningCount;
 
         public Tasks(int capacity)
         {
@@ -19,27 +22,29 @@ namespace Seedwork.CQRS.Bus.Core
 
         public void Add(Task task)
         {
-            lock (_sync)
+            if (task.Status != TaskStatus.Created)
             {
-                _tasks.Add(task);
+                throw new InvalidOperationException("It's not possible to control a started task.");
             }
+            WaitForFreeSlots().ConfigureAwait(false).GetAwaiter().GetResult();
+            _tasks.TryAdd(task.Id, task);
+
+            Interlocked.Increment(ref _isRunningCount);
+            task.ContinueWith(t =>
+            {
+                _tasks.TryRemove(t.Id, out _);
+                Interlocked.Decrement(ref _isRunningCount);
+            });
+            task.Start();
         }
-        public void WaitForFreeSlots()
+        public async Task WaitForFreeSlots()
         {
-            int freeSlots;
-            lock (_sync)
-            {
-                freeSlots = _capacity - _tasks.Count;
-            }
+            var freeSlots = _capacity - _isRunningCount;
 
             while (freeSlots <= 0)
             {
-                Task.Delay(100).Wait();
-                lock (_sync)
-                {
-                    _tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
-                    freeSlots = _capacity - _tasks.Count;
-                }
+                await Task.Delay(100);
+                freeSlots = _capacity - _isRunningCount;
             }
         }
 
@@ -63,12 +68,9 @@ namespace Seedwork.CQRS.Bus.Core
 
             if (disposing)
             {
-                lock (_sync)
-                {
-                    Task.WaitAll(_tasks.ToArray(), TimeSpan.FromMilliseconds(100));
-                    _tasks.Clear();
-                    _tasks = null;
-                }
+                Task.WaitAll(_tasks.Values.ToArray(), TimeSpan.FromMilliseconds(100));
+                _tasks.Clear();
+                _tasks = null;
             }
 
             _disposed = true;
@@ -76,10 +78,7 @@ namespace Seedwork.CQRS.Bus.Core
 
         public IEnumerator<Task> GetEnumerator()
         {
-            lock (_sync)
-            {
-                return _tasks.GetEnumerator();
-            }
+            return _tasks.Values.GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
