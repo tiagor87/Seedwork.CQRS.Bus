@@ -39,9 +39,11 @@ namespace Seedwork.CQRS.Bus.Core
         {
             var body = serializer.Serialize(Data).GetAwaiter().GetResult();
             var basicProperties = channel.CreateBasicProperties();
-            basicProperties.Headers = new Dictionary<string, object>();
-            basicProperties.Headers.Add(nameof(AttemptCount), AttemptCount);
-            basicProperties.Headers.Add(nameof(MaxAttempts), MaxAttempts);
+            basicProperties.Headers = new Dictionary<string, object>
+            {
+                {nameof(AttemptCount), AttemptCount},
+                {nameof(MaxAttempts), MaxAttempts}
+            };
             return (body, basicProperties);
         }
 
