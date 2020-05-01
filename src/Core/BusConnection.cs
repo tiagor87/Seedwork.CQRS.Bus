@@ -304,7 +304,7 @@ namespace Seedwork.CQRS.Bus.Core
                         }
                     });
 
-                PublishSuccessed?.Invoke(items);
+                PublishSuccessed?.Invoke(items.AsReadOnly());
             }
             catch (Exception ex)
             {
@@ -314,7 +314,7 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     throw;
                 }
-                PublishFailed.Invoke(items, ex);
+                PublishFailed.Invoke(items.AsReadOnly(), ex);
             }
         }
 

@@ -51,12 +51,6 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             _connectionMock.Setup(x => x.CreateModel())
                 .Returns(_channelMock.Object)
                 .Verifiable();
-            _busConnection = new BusConnection(
-                _connectionFactoryMock.Object,
-                _busSerializerMock.Object,
-                _serviceScopeFactoryMock.Object,
-                _optionsMock.Object,
-                _loggerMock.Object);
             _serviceScopeFactoryMock.Setup(x => x.CreateScope())
                 .Returns(_scopeMock.Object)
                 .Verifiable();
@@ -70,7 +64,6 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
         private readonly Mock<IServiceScopeFactory> _serviceScopeFactoryMock;
         private readonly Mock<IModel> _channelMock;
         private readonly Mock<IConnection> _connectionMock;
-        private readonly BusConnection _busConnection;
         private readonly Mock<IServiceScope> _scopeMock;
         private readonly Mock<IServiceProvider> _serviceProviderMock;
         private readonly Mock<IBasicProperties> _basicPropertiesMock;
@@ -136,7 +129,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Subscribe<string>(
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(
                 exchange,
                 queue,
                 routingKey,
@@ -192,13 +186,14 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             Exception callbackException = null;
             List<BatchItem> callbackItems = null;
 
-            _busConnection.PublishFailed += (items, ex) =>
+            var busConnection = GetBusConnection();
+            busConnection.PublishFailed += (items, ex) =>
             {
                 callbackItems = items.ToList();
                 callbackException = ex;
                 autoResetEvent.Set();
             };
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -237,9 +232,10 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             var autoResetEvent = new AutoResetEvent(false);
 
-            _busConnection.PublishSuccessed += _ => autoResetEvent.Set(); 
+            var busConnection = GetBusConnection();
+            busConnection.PublishSuccessed += _ => autoResetEvent.Set(); 
             
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -270,7 +266,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            var busConnection = GetBusConnection();
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -298,7 +295,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Publish(exchange, routingKey, notification);
+            var busConnection = GetBusConnection();
+            busConnection.Publish(exchange, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -339,7 +337,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            var busConnection = GetBusConnection();
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -389,7 +388,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            var busConnection = GetBusConnection();
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -428,12 +428,13 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             List<BatchItem> callbackItems = null;
 
-            _busConnection.PublishSuccessed += items =>
+            var busConnection = GetBusConnection();
+            busConnection.PublishSuccessed += items =>
             {
                 callbackItems = items.ToList();
                 autoResetEvent.Set();
             };
-            _busConnection.Publish(exchange, queue, routingKey, notification);
+            busConnection.Publish(exchange, queue, routingKey, notification);
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(5));
 
@@ -480,7 +481,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             var isExecuted = false;
             var autoResetEvent = new AutoResetEvent(false);
-            _busConnection.Subscribe<string>(exchange, queue, routingKey, 10, (scope, @event) =>
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(exchange, queue, routingKey, 10, (scope, @event) =>
             {
                 isExecuted = true;
                 return Task.CompletedTask;
@@ -546,7 +548,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((ulong tag, bool multiple) => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Subscribe<string>(
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(
                 exchange,
                 queue,
                 routingKey,
@@ -604,7 +607,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback(() => autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Subscribe<string>(
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(
                 exchange,
                 queue,
                 routingKey,
@@ -675,7 +679,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                     autoResetEvent.Set())
                 .Verifiable();
 
-            _busConnection.Subscribe<string>(
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(
                 exchange,
                 queue,
                 routingKey,
@@ -686,6 +691,16 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             _loggerMock.Verify(x => x.WriteException(It.IsAny<string>(), It.IsAny<Exception>(),
                 It.IsAny<KeyValuePair<string, object>[]>()));
+        }
+
+        private BusConnection GetBusConnection()
+        {
+            return new BusConnection(
+                _connectionFactoryMock.Object,
+                _busSerializerMock.Object,
+                _serviceScopeFactoryMock.Object,
+                _optionsMock.Object,
+                _loggerMock.Object);
         }
     }
 }

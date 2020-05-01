@@ -29,7 +29,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 tasks.WaitForFreeSlots();
             };
 
-            action.ExecutionTimeOf(s => s.Invoke()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(1000));
+            action.ExecutionTimeOf(s => s.Invoke()).Should().BeGreaterThan(TimeSpan.FromMilliseconds(950));
         }
 
         [Fact]
