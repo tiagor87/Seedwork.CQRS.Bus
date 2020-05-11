@@ -1,8 +1,7 @@
 using FluentAssertions;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.Tests.UnitTests
+namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 {
     public class DurabilityTests
     {

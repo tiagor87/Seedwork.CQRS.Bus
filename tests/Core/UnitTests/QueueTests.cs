@@ -1,9 +1,8 @@
 using System;
 using FluentAssertions;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.Tests.UnitTests
+namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 {
     public class QueueTests
     {
@@ -227,6 +226,15 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
             queue.Name.Value.Should().Be("seedwork.cqrs");
             queue.Durability.Should().Be(Durability.Transient);
             queue.IsAutoDelete.Should().BeFalse();
+        }
+        
+        [Fact]
+        public void GivenQueueWhenNamesAreSameShouldBeEquals()
+        {
+            var queue1 = Queue.Create("seedwork.cqrs");
+            var queue2 = Queue.Create("seedwork.cqrs");
+
+            queue1.Should().Be(queue2);
         }
     }
 }

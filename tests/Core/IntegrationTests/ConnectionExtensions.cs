@@ -1,6 +1,4 @@
-using Seedwork.CQRS.Bus.Core;
-
-namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
+namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 {
     public static class ConnectionExtensions
     {

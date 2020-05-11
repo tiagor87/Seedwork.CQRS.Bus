@@ -1,9 +1,8 @@
 using System;
 using FluentAssertions;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.Tests.UnitTests
+namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 {
     public class ExchangeTests
     {
@@ -91,6 +90,15 @@ namespace Seedwork.CQRS.Bus.Tests.UnitTests
 
             exchange.Should().NotBeNull();
             exchange.IsAutoDelete.Should().BeFalse();
+        }
+        
+        [Fact]
+        public void GivenQueueWhenNamesAreSameShouldBeEquals()
+        {
+            var exchange1 = Exchange.Create("seedwork", ExchangeType.Topic);
+            var exchange2 = Exchange.Create("seedwork", ExchangeType.Topic);
+
+            exchange1.Should().Be(exchange2);
         }
     }
 }

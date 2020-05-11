@@ -2,10 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using RabbitMQ.Client;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
-    public class Queue
+    public class Queue : ValueObject
     {
         private readonly IDictionary<string, object> _arguments = new Dictionary<string, object>();
 
@@ -202,6 +203,11 @@ namespace Seedwork.CQRS.Bus.Core
         {
             return Create($"{Name.Value}-failed")
                 .WithDurability(Durability.Durable);
+        }
+
+        protected override IEnumerable<object> GetAtomicValues()
+        {
+            yield return Name;
         }
     }
 }

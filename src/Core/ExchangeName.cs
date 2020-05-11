@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
@@ -11,7 +11,7 @@ namespace Seedwork.CQRS.Bus.Core
             Value = value;
         }
 
-        public string Value { get; private set; }
+        public string Value { get; }
         public static ExchangeName Default => new ExchangeName(string.Empty);
 
         public static ExchangeName Create(string name)

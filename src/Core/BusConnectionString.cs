@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {

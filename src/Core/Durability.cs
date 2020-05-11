@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using Seedwork.DomainDriven.Core;
+using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
@@ -16,8 +16,6 @@ namespace Seedwork.CQRS.Bus.Core
 
         public static Durability Durable => new Durability(nameof(Durable));
         public static Durability Transient => new Durability(nameof(Transient));
-
-
         protected override IEnumerable<object> GetAtomicValues()
         {
             yield return Value;

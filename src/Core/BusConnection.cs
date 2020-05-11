@@ -3,14 +3,13 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using BufferList;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Polly;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using TRBufferList.Core;
 
 namespace Seedwork.CQRS.Bus.Core
 {
@@ -22,7 +21,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)> _consumers;
+        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)> _consumers;
         private readonly IBusLogger _logger;
         private readonly IOptions<BusConnectionOptions> _options;
         private readonly BufferList<BatchItem> _publisherBuffer;
@@ -42,7 +41,7 @@ namespace Seedwork.CQRS.Bus.Core
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _options = options;
-            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, List<Task>)>();
+            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)>();
             _connectionFactory = connectionFactory;
             _publisherBuffer =
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
@@ -68,12 +67,13 @@ namespace Seedwork.CQRS.Bus.Core
                     return _publisherConnection;
                 }
 
+                var retryDelay = TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds);
                 lock (_sync)
                 {
-                    return _publisherConnection ?? (_publisherConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(_options.Value.ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
-                               .Execute(() => _connectionFactory.CreateConnection()));
+                    return _publisherConnection ??= Policy.Handle<Exception>()
+                        .WaitAndRetry(_options.Value.ConnectionMaxRetry,
+                            _ => retryDelay)
+                        .Execute(() => _connectionFactory.CreateConnection());
                 }
             }
         }
@@ -87,13 +87,14 @@ namespace Seedwork.CQRS.Bus.Core
                     return _consumerConnection;
                 }
 
+                var retryDelay = TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds);
                 lock (_sync)
                 {
-                    return _consumerConnection ?? (_consumerConnection = Policy.Handle<Exception>()
-                               .WaitAndRetry(
-                                   _options.Value.ConnectionMaxRetry,
-                                   _ => TimeSpan.FromMilliseconds(_options.Value.ConnectionRetryDelayInMilliseconds))
-                               .Execute(() => _connectionFactory.CreateConnection()));
+                    return _consumerConnection ??= Policy.Handle<Exception>()
+                        .WaitAndRetry(
+                            _options.Value.ConnectionMaxRetry,
+                            _ => retryDelay)
+                        .Execute(() => _connectionFactory.CreateConnection());
                 }
             }
         }
@@ -131,13 +132,12 @@ namespace Seedwork.CQRS.Bus.Core
 
             var consumer = new AsyncEventingBasicConsumer(channel);
 
-            var tasks = new List<Task>(_options.Value.ConsumerMaxParallelTasks);
+            var tasks = new Tasks(_options.Value.ConsumerMaxParallelTasks);
             consumer.Received += (sender, args) =>
             {
-                WaitForFreeSlots(tasks, _options.Value.ConsumerMaxParallelTasks);
                 try
                 {
-                    var task = Task.Run(async () =>
+                    var task = new Task(async () =>
                     {
                         try
                         {
@@ -159,18 +159,15 @@ namespace Seedwork.CQRS.Bus.Core
                         catch (Exception exception)
                         {
                             _logger?.WriteException(nameof(Subscribe), exception,
-                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body)));
+                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body.ToArray())));
                             var failedQueue = queue.CreateFailedQueue();
                             var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
                             Publish(Exchange.Default, failedQueue, failedRoutingKey,
-                                ErrorMessage.Create(args.Body, args.BasicProperties));
+                                ErrorMessage.Create(args.Body.ToArray(), args.BasicProperties));
                             channel.BasicNack(args.DeliveryTag, false, false);
                         }
                     });
-                    lock (_sync)
-                    {
-                        tasks.Add(task);
-                    }
+                    tasks.Add(task);
                 }
                 catch (Exception ex)
                 {
@@ -223,25 +220,6 @@ namespace Seedwork.CQRS.Bus.Core
         {
             Dispose(false);
         }
-        
-        private static void WaitForFreeSlots(List<Task> tasks, int maxParallelTasks)
-        {
-            int freeSlots;
-            lock (_sync)
-            {
-                freeSlots = maxParallelTasks - tasks.Count;
-            }
-
-            while (freeSlots <= 0)
-            {
-                Thread.Sleep(100);
-                tasks.RemoveAll(x => x.IsCompleted || x.IsCanceled || x.IsFaulted);
-                lock (_sync)
-                {
-                    freeSlots = maxParallelTasks - tasks.Count;
-                }
-            }
-        }
 
         private static IConnectionFactory GetConnectionFactory(Uri connectionString)
         {
@@ -250,7 +228,7 @@ namespace Seedwork.CQRS.Bus.Core
                 Uri = connectionString,
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
-                RequestedHeartbeat = 30,
+                RequestedHeartbeat = TimeSpan.FromSeconds(30),
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
@@ -326,13 +304,17 @@ namespace Seedwork.CQRS.Bus.Core
                         }
                     });
 
-                PublishSuccessed?.Invoke(items);
+                PublishSuccessed?.Invoke(items.AsReadOnly());
             }
             catch (Exception ex)
             {
                 _logger?.WriteException(nameof(PublishBufferOnCleared), ex,
                     new KeyValuePair<string, object>("Events", items));
-                PublishFailed?.Invoke(items, ex);
+                if (PublishFailed == null)
+                {
+                    throw;
+                }
+                PublishFailed.Invoke(items.AsReadOnly(), ex);
             }
         }
 
@@ -349,8 +331,8 @@ namespace Seedwork.CQRS.Bus.Core
                 {
                     var key = consumerGroup.Key;
                     var value = consumerGroup.Value;
-                    var (channel, _, buffer) = value;
-                    buffer.Clear();
+                    var (channel, _, tasks) = value;
+                    tasks.Dispose();
                     channel.BasicCancel(key);
                     channel.Close();
                     channel.Dispose();

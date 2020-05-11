@@ -4,10 +4,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
-using Seedwork.CQRS.Bus.Core;
 using Xunit;
 
-namespace Seedwork.CQRS.Bus.Tests.IntegrationTests
+namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 {
     public class BusConnectionTests : IClassFixture<BusConnectionFixture>
     {
