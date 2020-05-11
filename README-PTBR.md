@@ -1,5 +1,5 @@
 [![Build status](https://tiagor87.visualstudio.com/OpenSource/_apis/build/status/Seedwork.Cqrs.Bus)](https://tiagor87.visualstudio.com/OpenSource/_build/latest?definitionId=9)
-[![Coverage Status](https://coveralls.io/repos/github/tiagor87/Seedwork.CQRS.Bus/badge.svg)](https://coveralls.io/github/tiagor87/Seedwork.CQRS.Bus)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=tiagor87_Seedwork.CQRS.Bus&metric=coverage)](https://sonarcloud.io/dashboard?id=tiagor87_Seedwork.CQRS.Bus)
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tiagor87_Seedwork.CQRS.Bus&metric=alert_status)](https://sonarcloud.io/dashboard?id=tiagor87_Seedwork.CQRS.Bus)
 [![NuGet](https://buildstats.info/nuget/Seedwork.CQRS.Bus.Core)](http://www.nuget.org/packages/Seedwork.CQRS.Bus.Core)
 
