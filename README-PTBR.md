@@ -3,18 +3,11 @@
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=tiagor87_Seedwork.CQRS.Bus&metric=alert_status)](https://sonarcloud.io/dashboard?id=tiagor87_Seedwork.CQRS.Bus)
 [![NuGet](https://buildstats.info/nuget/Seedwork.CQRS.Bus.Core)](http://www.nuget.org/packages/Seedwork.CQRS.Bus.Core)
 
-# Seedwork.CQRS.Bus [EN]/[[BR](README-PTBR.md)]
+ # Seedwork.CQRS.Bus [[EN](README.md)]/[BR]
 
-__Seedwork.CQRS.Bus__ is a project to make RabbitMQ easier to use and control some basic flows.
+__Seedwork.CQRS.Bus__ é um projeto para facilitar a utilização do RabbitMQ no uso e controle de fluxos básicos.
 
-## How to use?
-
-Register __BusConnection__ as __singleton__ in your project.
-
-__BusConnection__ requires:
-- BusConnectionString: RabbitMQ connection string;
-- IBusSerializer: The default serializer;
-- IServiceScopeFactory: Scope factory for DI.
+## Como usar?
 
 ```csharp
 services
@@ -28,7 +21,7 @@ services
         });
 ```
 
-or
+ou
 
 ```csharp
 services
@@ -43,11 +36,11 @@ services
         });
 ```
 
-## Publish
+## Publicações
 
-All the publish happens in batch, so you will have to wait until **PublisherBufferSize** achieved or **PublisherBufferTtlInMilliseconds** runs out.
+Toda a publicação ocorre em lote, portanto, você terá que esperar até que **PublisherBufferSize** seja alcançado ou **PublisherBufferTtlInMilliseconds** acabe.
 
-### How to publish a simple message?
+### Como publicar uma mensagem simples?
 
 ```c#
 var exchange = Exchange.Create("exchange", ExchangeType.Direct);
@@ -58,7 +51,7 @@ string message = "Message";
 await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 ```
 
-### How to publish a list of messages?
+### Como publicar uma lista de mensagens?
 
 ```c#
 var exchange = Exchange.Create("exchange", ExchangeType.Direct);
@@ -73,7 +66,7 @@ string[] messages = new [] {
 await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, messages);
 ```
 
-## How to process a message?
+## Como processar uma mensagem?
 
 ```c#
 _connectionFixture.Connection.Subscribe<string>(
@@ -89,13 +82,13 @@ _connectionFixture.Connection.Subscribe<string>(
     });
 ```
 
-### When fails to process a message, whats happens?
+### O que acontece quando ocorre um erro no processamento da mensagem?
 
-* When a message fails to be processed, the application will re-queue it to the retry-queue with a message expiration, to send it back to the main queue later;
-* When the max attempts is achivied, the application will route it to failed-queue;
-* When the system fails to re-queue, it will nack the message.
+* Quando ocorre uma falha no processamento da mensagem, a aplicação re-enfileira a mensagem na fila de retentativa com um tempo de atraso, para enviá-la a fila principal ao fim deste tempo;
+* Quando o número máximo de tentativas de processamento é atingida, a aplicação move a mensagem para a fila de falha;
+* Quando o sistema falha ao re-enfileirar, é realizado _Nack_ da mensagem.
 
-#### How can I configure the max attempts?
+#### Como posso configurar o número máximo de tentativas?
 
 ```c#
 var exchange = Exchange.Create("exchange", ExchangeType.Direct);
@@ -108,23 +101,23 @@ var message = Message.Create(
 await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 ```
 
-* When publisher not set max attempts, a __default__ value will be set.
-* When publisher set max attempts to __zero__, it will retry forever.
+* Quando não definido o número máximo de tentantivas, um valor __padrão__ será definido.
+* Quando se defino __zero__ para o número máximo de tentantivas, a mensagem será retentada eternamente.
 
-## What can I configure?
+## O que eu posso configurar?
 
-* **PublisherBufferSize** (default: 1000): Message's limit to publish at once;
-* **PublisherBufferTtlInMilliseconds** (default: 5000): Publish messages when the limit is not achieved; 
-* **ConnectionMaxRetry** (default: 10): Max attempts to connect to bus before fails; 
-* **ConnectionRetryDelayInMilliseconds** (default: 500): Delay between connection attempts;
-* **ConsumerMaxParallelTasks** (default: 500): Thread's limit to process; 
-* **MessageMaxRetry** (default: 5): Max attempts to process a message; 
-* **PublishMaxRetry** (default: 5): Max attempts to publish messages;
-* **PublishRetryDelayInMilliseconds** (default: 100): Delay between publish attempts.
+* **PublisherBufferSize** (default: 1000): Limite de mensagens para publicar no lote;
+* **PublisherBufferTtlInMilliseconds** (default: 5000): Tempo limite para publicação do lote de mensagens (quando o limite de quantidade não for atingido); 
+* **ConnectionMaxRetry** (default: 10): Máximo de tentativas de conexão com a fila antes de falhar; 
+* **ConnectionRetryDelayInMilliseconds** (default: 500): Delay entre as tentantivas de conexão;
+* **ConsumerMaxParallelTasks** (default: 500): Limite de threads em paralelo; 
+* **MessageMaxRetry** (default: 5): Máximo de tentativas de processamento de uma mensagem; 
+* **PublishMaxRetry** (default: 5): Máximo de tentativas de publicação de uma mensagem;
+* **PublishRetryDelayInMilliseconds** (default: 100): Tempo entre as tentativas de publicação da mensagem.
 
-## Events
+## Eventos
 
-* **PublishSuccessed**: When publish success, the system will dispatch this event with messages sent.
+* **PublishSuccessed**: Quando a publicação for bem-sucedida, o sistema enviará esse evento com as mensagens que obtiveram sucesso.
 
 ```c#
 Connection.PublishSuccessed += items => 
@@ -133,7 +126,7 @@ Connection.PublishSuccessed += items =>
 };
 ```
 
-* **PublishFailed**: When publish fails after all attempts, the system will dispatch this event with messages and exception.
+* **PublishFailed**: 103/5000Quando a publicação falha após todas as tentativas, o sistema despacha esse evento com as mensagens e exceção.
 
 ```c#
 Connection.PublishFailed += (items, exception) => 
