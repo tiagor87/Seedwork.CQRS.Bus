@@ -6,9 +6,12 @@ variables:
   Version_Minor: '2'
 
 trigger:
+  batch: true
   branches:
-    include: 'master'
-  pr: 'master'
+    include:
+    - 'master'
+  pr:
+  - 'master'
 
 stages:
   - stage: Build
