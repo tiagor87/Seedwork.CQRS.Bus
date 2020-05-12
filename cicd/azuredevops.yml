@@ -10,8 +10,10 @@ trigger:
   branches:
     include:
     - 'master'
-  pr:
-  - 'master'
+pr:
+  autoCancel: true
+  branches:
+    - 'master'
 
 stages:
   - stage: Build
