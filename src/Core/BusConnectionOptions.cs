@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Microsoft.Extensions.Configuration;
 using TRDomainDriven.Core;
 
 namespace Seedwork.CQRS.Bus.Core
