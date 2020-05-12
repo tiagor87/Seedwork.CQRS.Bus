@@ -5,6 +5,17 @@ variables:
   Version_Major: '0'
   Version_Minor: '2'
 
+trigger:
+  batch: true
+  branches:
+    include:
+    - 'master'
+pr:
+  autoCancel: true
+  branches:
+    include:
+    - 'master'
+
 stages:
   - stage: Build
     displayName: Build stage
@@ -91,6 +102,7 @@ stages:
 
   - stage: Deploy
     displayName: Deploy stage
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     jobs:
       - job: Deploy
         displayName: Deploy job
