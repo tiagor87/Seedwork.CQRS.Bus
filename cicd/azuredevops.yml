@@ -7,8 +7,8 @@ variables:
 
 trigger:
   branches:
-    include: master
-  pr: master
+    include: 'master'
+  pr: 'master'
 
 stages:
   - stage: Build
