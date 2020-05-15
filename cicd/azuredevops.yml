@@ -6,7 +6,7 @@ variables:
   version.minor: 3
   patch: $[counter(format('{0}.{1}-{2}', variables['version.major'], variables['version.minor'], variables['Build.SourceBranch']), 0)]
   ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
-    version: $[format('PR-{0}.{1}', variables['System.PullRequest.PullRequestNumber'], variables['patch'])]
+    version: $[format('{0}.{1}-PR', variables['System.PullRequest.PullRequestNumber'], variables['patch'])]
   ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
     version: $[format('{0}.{1}.{2}', variables['version.major'], variables['version.minor'], variables['patch'])]
 
@@ -49,17 +49,12 @@ stages:
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
-          - task: DotNetCoreCLI@2
-            displayName: 'Restore'
-            inputs:
-              command: restore
-              projects: '**/*.csproj'
 
           - task: DotNetCoreCLI@2
             displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
-              arguments: '--no-restore --configuration Release'
+              arguments: '--configuration Release'
 
           - task: DotNetCoreCLI@2
             displayName: 'Test - opencover'
