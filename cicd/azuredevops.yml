@@ -70,16 +70,25 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: reportgenerator@4
-            displayName: ReportGenerator
-            inputs:
-              reports: 'tests/Core/coverage.opencover.xml'
-              targetdir: 'tests'
-              reporttypes: 'Cobertura;'
-              sourcedirs: 'src'
-
           - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
+            
+          - task: SonarCloudPublish@1
+              displayName: 'Publish Quality Gate Result'
+              
+          - task: reportgenerator@4
+              displayName: ReportGenerator
+              inputs:
+                reports: 'tests/Core/coverage.opencover.xml'
+                targetdir: 'tests'
+                reporttypes: 'Cobertura;'
+                sourcedirs: 'src'
+              
+          - task: PublishCodeCoverageResults@1
+              displayName: 'Publish Coverage Results'
+              inputs:
+                codeCoverageTool: 'cobertura'
+                summaryFileLocation: $(Build.SourcesDirectory)/tests/cobertura.xml
 
           - task: DotNetCoreCLI@2
             displayName: 'Pack Release'
@@ -96,15 +105,6 @@ stages:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
               contents: '**/*.nupkg'
               artifactName: 'drop'
-
-          - task: PublishCodeCoverageResults@1
-            displayName: 'Publish Coverage Results'
-            inputs:
-              codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/cobertura.xml
-
-          - task: SonarCloudPublish@1
-            displayName: 'Publish Quality Gate Result'
 
   - stage: Deploy
     displayName: Deploy stage
