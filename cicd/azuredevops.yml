@@ -75,12 +75,14 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@4
+          - task: reportgenerator@4
             displayName: ReportGenerator
             inputs:
               reports: 'tests/Core/coverage.opencover.xml'
               targetdir: 'tests/coverage'
               reporttypes: 'Cobertura;SonarQube'
+              sourcedirs: 'src'
+              tag: '$(version)'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
