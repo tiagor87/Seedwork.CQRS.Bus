@@ -113,6 +113,7 @@ stages:
         pool:
           vmImage: vs2017-win2016
         steps:
+          - checkout: none
           - task: DownloadBuildArtifacts@0
             displayName: 'Download Package Artifact'
             inputs:
