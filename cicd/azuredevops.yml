@@ -54,11 +54,7 @@ stages:
             displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
-              arguments: '--configuration Release'
-              versioningScheme: byPrereleaseNumber
-              majorVersion: $(version.major)
-              minorVersion: $(version.minor)
-              patchVersion: $(version.patch)
+              arguments: '--configuration Release -p:Version=$(version.major).$(version.minor).$(version.patch)'
               verbosityRestore: minimal
 
           - task: DotNetCoreCLI@2
@@ -67,10 +63,6 @@ stages:
               command: test
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
-              versioningScheme: byPrereleaseNumber
-              majorVersion: $(version.major)
-              minorVersion: $(version.minor)
-              patchVersion: $(version.patch)
 
           - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
