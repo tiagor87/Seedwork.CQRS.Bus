@@ -88,7 +88,7 @@ stages:
             displayName: 'Publish Coverage Results'
             inputs:
               codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/cobertura.xml
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/Cobertura.xml
 
           - task: DotNetCoreCLI@2
             displayName: 'Pack Release'
