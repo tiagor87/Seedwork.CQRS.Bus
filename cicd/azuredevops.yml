@@ -1,15 +1,15 @@
-name: $(prefix)$(version)
+name: $(version)
 
 variables:
   sonar.project_key: 'tiagor87_Seedwork.CQRS.Bus'
   major: 0
   minor: 3
   patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
-  version: $[format('{0}.{1}.{2}', variables['major'], variables['minor'], variables['patch'])]
   ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
-    prefix: $[format('pr-{0}_v', variables['System.PullRequest.PullRequestNumber'])]
+    sufix: $[format('-pr{0}', variables['System.PullRequest.PullRequestNumber'])]
   ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
-    prefix: 'v'
+    sufix: ''
+  version: $[format('{0}.{1}.{2}{3}', variables['major'], variables['minor'], variables['patch'], variables['sufix'])]
 
 trigger:
   batch: true
@@ -46,7 +46,7 @@ stages:
               organization: 'tiagor87-github'
               projectKey: '$(sonar.project_key)'
               projectName: '$(Build.DefinitionName)'
-              projectVersion: '$(Build.BuildNumber)'
+              projectVersion: '$(version)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
