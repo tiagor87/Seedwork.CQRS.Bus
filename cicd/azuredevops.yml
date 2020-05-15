@@ -49,9 +49,12 @@ stages:
               projectVersion: '$(version)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.cs.opencover.reportsPaths=tests/**/coverage.opencover.xml
-                sonar.coverageReportPaths=tests/coverage/SonarQube.xml
+                sonar.coverageReportPaths=$(Build.SourcesDirectory)/tests/coverage/SonarQube.xml
+                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+                sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
+                sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
+                sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
 
           - task: DotNetCoreCLI@2
             displayName: 'Restore'
