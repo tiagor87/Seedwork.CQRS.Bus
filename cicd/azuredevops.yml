@@ -23,7 +23,6 @@ pr:
 
 stages:
   - stage: Analysing
-    condition: eq(variables['Build.Reason'], 'PullRequest')
     jobs:
       - job:
         pool:
@@ -85,7 +84,7 @@ stages:
               summaryFileLocation: $(Build.SourcesDirectory)/tests/Cobertura.xml
               
   - stage: Deploying
-    condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
     jobs:
       - job: Packing
         pool:
