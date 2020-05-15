@@ -1,7 +1,7 @@
 name: $(version)
 
 variables:
-  sonar.project_key: 'tiagor87_Seedwork.CQRS.Bus'
+  sonarProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
   major: 0
   minor: 3
   patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
@@ -39,12 +39,12 @@ stages:
               targetType: 'inline'
               script: 'docker run -p 5672:5672 -d rabbitmq:alpine'
 
-          - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+          - task: SonarCloudPrepare@1
             displayName: 'Prepare analysis on SonarCloud'
             inputs:
               SonarCloud: SonarCloud
               organization: 'tiagor87-github'
-              projectKey: '$(sonar.project_key)'
+              projectKey: '$(sonarProjectKey)'
               projectName: '$(Build.DefinitionName)'
               projectVersion: '$(version)'
               extraProperties: |
@@ -84,7 +84,7 @@ stages:
               sourcedirs: 'src'
               tag: '$(version)'
 
-          - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+          - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
 
           - task: DotNetCoreCLI@2
@@ -108,7 +108,7 @@ stages:
               summaryFileLocation: $(Build.SourcesDirectory)/tests/coverage/Cobertura.xml
               reportDirectory: $(Build.SourcesDirectory)/tests/coverage
 
-          - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+          - task: SonarCloudPublish@1
             displayName: 'Publish Quality Gate Result'
 
   - stage: Deploy
