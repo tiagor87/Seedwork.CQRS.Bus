@@ -1,15 +1,9 @@
-name: $(version)
+name: $(Version_Major).$(Version_Minor)$(rev:.r)
 
 variables:
-  sonar.project_key: 'tiagor87_Seedwork.CQRS.Bus'
-  major: 0
-  minor: 3
-  patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
-  ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
-    sufix: $[format('-pr{0}', variables['System.PullRequest.PullRequestNumber'])]
-  ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
-    sufix: ''
-  version: $[format('{0}.{1}.{2}{3}', variables['major'], variables['minor'], variables['patch'], variables['sufix'])]
+  Sonar_ProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
+  Version_Major: '0'
+  Version_Minor: '2'
 
 trigger:
   batch: true
@@ -39,23 +33,18 @@ stages:
               targetType: 'inline'
               script: 'docker run -p 5672:5672 -d rabbitmq:alpine'
 
-          - task: SonarSource.sonarcloud.14d9cde6-c1da-4d55-aa01-2965cd301255.SonarCloudPrepare@1
+          - task: SonarCloudPrepare@1
             displayName: 'Prepare analysis on SonarCloud'
             inputs:
               SonarCloud: SonarCloud
               organization: 'tiagor87-github'
-              projectKey: '$(sonar.project_key)'
+              projectKey: '$(Sonar_ProjectKey)'
               projectName: '$(Build.DefinitionName)'
-              projectVersion: '$(version)'
+              projectVersion: '$(Build.BuildNumber)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.coverageReportPaths=$(Build.SourcesDirectory)/tests/coverage/SonarQube.xml
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
-                sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
-                sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
-                sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
-
           - task: DotNetCoreCLI@2
             displayName: 'Restore'
             inputs:
@@ -66,7 +55,7 @@ stages:
             displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
-              arguments: '--no-restore --configuration Release /p:Version=$(version)'
+              arguments: '--no-restore --configuration Release'
 
           - task: DotNetCoreCLI@2
             displayName: 'Test - opencover'
@@ -75,16 +64,14 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: reportgenerator@4
-            displayName: ReportGenerator
+          - task: DotNetCoreCLI@2
+            displayName: 'Test - cobertura'
             inputs:
-              reports: 'tests/Core/coverage.opencover.xml'
-              targetdir: 'tests/coverage'
-              reporttypes: 'Cobertura;SonarQube'
-              sourcedirs: 'src'
-              tag: '$(version)'
+              command: test
+              projects: 'tests/**/*.csproj'
+              arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
 
-          - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
+          - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
 
           - task: DotNetCoreCLI@2
@@ -92,7 +79,9 @@ stages:
             inputs:
               command: pack
               packagesToPack: 'src/**/*.csproj'
-              arguments: '--no-build --configuration Release /p:Version=$(version)'
+              nobuild: true
+              configurationToPack: 'Release'
+              versioningScheme: byBuildNumber
 
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Package Artifact'
@@ -105,10 +94,9 @@ stages:
             displayName: 'Publish Coverage Results'
             inputs:
               codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/coverage/Cobertura.xml
-              reportDirectory: $(Build.SourcesDirectory)/tests/coverage
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
 
-          - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
+          - task: SonarCloudPublish@1
             displayName: 'Publish Quality Gate Result'
 
   - stage: Deploy
@@ -120,7 +108,6 @@ stages:
         pool:
           vmImage: vs2017-win2016
         steps:
-          - checkout: none
           - task: DownloadBuildArtifacts@0
             displayName: 'Download Package Artifact'
             inputs:
@@ -135,4 +122,3 @@ stages:
               packagesToPush: '$(System.ArtifactsDirectory)/drop/*.nupkg'
               nuGetFeedType: external
               publishFeedCredentials: Nuget
-
