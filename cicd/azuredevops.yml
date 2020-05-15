@@ -71,12 +71,12 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: DotNetCoreCLI@2
-            displayName: 'Test - cobertura'
+          - task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@4
+            displayName: ReportGenerator
             inputs:
-              command: test
-              projects: 'tests/**/*.csproj'
-              arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
+              reports: 'tests/**/coverage.opencover.xml'
+              targetdir: 'tests/**/coverage.cobertura.xml'
+              reporttypes: 'Cobertura'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
