@@ -6,10 +6,9 @@ variables:
   version.minor: 3
   patch: $[counter(format('{0}.{1}-{2}', variables['version.major'], variables['version.minor'], variables['Build.SourceBranch']), 0)]
   ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
-    sufix: $[format('-pr{0}', variables['System.PullRequest.PullRequestNumber'])]
+    version: $[format('PR-{0}.{1}', variables['System.PullRequest.PullRequestNumber'], variables['patch'])]
   ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
-    sufix: ''
-  version: $[format('{0}.{1}.{2}{3}', variables['version.major'], variables['version.minor'], variables['patch'], variables['sufix'])]
+    version: $[format('{0}.{1}.{2}', variables['version.major'], variables['version.minor'], variables['patch'])]
 
 trigger:
   batch: true
@@ -26,8 +25,7 @@ stages:
   - stage: Analysing
     condition: eq(variables['Build.Reason'], 'PullRequest')
     jobs:
-      - job: Build
-        displayName: Build job
+      - job:
         pool:
           vmImage: ubuntu-latest
           demands:
@@ -93,7 +91,7 @@ stages:
   - stage: Deploying
     condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
     jobs:
-      - job: Pack
+      - job: Packing
         pool:
           vmImage: ubuntu-latest
         steps:
@@ -112,7 +110,7 @@ stages:
               artifactName: 'drop'
               
       - job: Publishing
-        condition: succeeded()
+        dependsOn: Packing
         pool:
           vmImage: ubuntu-latest
         steps:
