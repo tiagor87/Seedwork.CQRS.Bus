@@ -49,12 +49,8 @@ stages:
               projectVersion: '$(version)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.coverageReportPaths=$(Build.SourcesDirectory)/tests/coverage/SonarQube.xml
                 sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
-                sonar.pullrequest.key=$(System.PullRequest.PullRequestNumber)
-                sonar.pullrequest.branch=$(System.PullRequest.SourceBranch)
-                sonar.pullrequest.base=$(System.PullRequest.TargetBranch)
 
           - task: DotNetCoreCLI@2
             displayName: 'Restore'
@@ -75,14 +71,15 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: reportgenerator@4
-            displayName: ReportGenerator
-            inputs:
-              reports: 'tests/Core/coverage.opencover.xml'
-              targetdir: 'tests/coverage'
-              reporttypes: 'Cobertura;SonarQube'
-              sourcedirs: 'src'
-              tag: '$(version)'
+          
+#          - task: reportgenerator@4
+#            displayName: ReportGenerator
+#            inputs:
+#              reports: 'tests/Core/coverage.opencover.xml'
+#              targetdir: 'tests/coverage'
+#              reporttypes: 'Cobertura;SonarQube'
+#              sourcedirs: 'src'
+#              tag: '$(version)'
 
           - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
@@ -101,12 +98,12 @@ stages:
               contents: '**/*.nupkg'
               artifactName: 'drop'
 
-          - task: PublishCodeCoverageResults@1
-            displayName: 'Publish Coverage Results'
-            inputs:
-              codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/coverage/Cobertura.xml
-              reportDirectory: $(Build.SourcesDirectory)/tests/coverage
+#          - task: PublishCodeCoverageResults@1
+#            displayName: 'Publish Coverage Results'
+#            inputs:
+#              codeCoverageTool: 'cobertura'
+#              summaryFileLocation: $(Build.SourcesDirectory)/tests/coverage/Cobertura.xml
+#              reportDirectory: $(Build.SourcesDirectory)/tests/coverage
 
           - task: SonarCloudPublish@1
             displayName: 'Publish Quality Gate Result'
