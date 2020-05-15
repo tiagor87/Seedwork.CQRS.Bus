@@ -74,7 +74,7 @@ stages:
             displayName: ReportGenerator
             inputs:
               reports: 'tests/Core/coverage.opencover.xml'
-              targetdir: 'tests/Core/coverage.cobertura.xml'
+              targetdir: 'tests'
               reporttypes: 'Cobertura;'
               sourcedirs: 'src'
 
@@ -101,7 +101,7 @@ stages:
             displayName: 'Publish Coverage Results'
             inputs:
               codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/cobertura.xml
 
           - task: SonarCloudPublish@1
             displayName: 'Publish Quality Gate Result'
