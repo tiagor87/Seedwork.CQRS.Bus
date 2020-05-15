@@ -55,7 +55,7 @@ stages:
             inputs:
               projects: '**/*.csproj'
               arguments: '--configuration Release'
-              versioningScheme: off              
+              versioningScheme: 'off'             
 
           - task: DotNetCoreCLI@2
             displayName: 'Test - opencover'
