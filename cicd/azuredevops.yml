@@ -55,10 +55,13 @@ stages:
             inputs:
               projects: '**/*.csproj'
               arguments: '--configuration Release'
-              versioningScheme: 'off'             
+              versioningScheme: byPrereleaseNumber
+                majorVersion: $(version.major)
+                minorVersion: $(version.minor)
+                patchVersion: $(version.patch)             
 
           - task: DotNetCoreCLI@2
-            displayName: 'Test - opencover'
+            displayName: 'Test'
             inputs:
               command: test
               projects: 'tests/**/*.csproj'
