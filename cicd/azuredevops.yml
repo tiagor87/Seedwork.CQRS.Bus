@@ -2,7 +2,6 @@ name: $(prefix)$(version)
 
 variables:
   sonar.project_key: 'tiagor87_Seedwork.CQRS.Bus'
-  prefix: 'v'
   major: 0
   minor: 3
   patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
