@@ -96,7 +96,10 @@ stages:
               command: pack
               packagesToPack: 'src/**/*.csproj'
               configurationToPack: 'Release'
-              versioningScheme: byBuildNumber
+              versioningScheme: byPrereleaseNumber
+              majorVersion: $(version.major)
+              minorVersion: $(version.minor)
+              patchVersion: $(version.patch)
   
           - task: PublishBuildArtifacts@1
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
