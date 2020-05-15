@@ -49,8 +49,8 @@ stages:
               projectVersion: '$(version)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
-                sonar.coverageReportPaths=$(Build.SourcesDirectory)/tests/coverage/SonarQube.xml
+                sonar.cs.opencover.reportsPaths=tests/**/coverage.opencover.xml
+                sonar.coverageReportPaths=tests/coverage/SonarQube.xml
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
           - task: DotNetCoreCLI@2
