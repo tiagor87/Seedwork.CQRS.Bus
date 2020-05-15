@@ -56,9 +56,10 @@ stages:
               projects: '**/*.csproj'
               arguments: '--configuration Release'
               versioningScheme: byPrereleaseNumber
-                majorVersion: $(version.major)
-                minorVersion: $(version.minor)
-                patchVersion: $(version.patch)             
+              majorVersion: $(version.major)
+              minorVersion: $(version.minor)
+              patchVersion: $(version.patch)
+              verbosityRestore: minimal
 
           - task: DotNetCoreCLI@2
             displayName: 'Test'
@@ -103,6 +104,8 @@ stages:
               majorVersion: $(version.major)
               minorVersion: $(version.minor)
               patchVersion: $(version.patch)
+              verbosityRestore: minimal
+              verbosityPack: minimal
   
           - task: PublishBuildArtifacts@1
             condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
