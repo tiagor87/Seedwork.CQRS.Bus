@@ -1,11 +1,16 @@
-name: $(Version)
+name: $(prefix)$(version)
 
 variables:
-  Sonar_ProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
-  Version_Major: '0'
-  Version_Minor: '2'
-  Version_Patch: $[counter(variables['build.reason'], 0)]
-  Version: $(Version_Major).$(Version_Minor).$(Version_Patch)$(rev:.r)
+  sonar.project_key: 'tiagor87_Seedwork.CQRS.Bus'
+  prefix: 'v'
+  major: 0
+  minor: 3
+  patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
+  version: $[format('{0}.{1}.{2}', variables['major'], variables['minor'], variables['patch'])]
+  ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
+    prefix: $[format('pr-{0}_v', variables['System.PullRequest.PullRequestNumber'])]
+  ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
+    prefix: 'v'
 
 trigger:
   batch: true
@@ -19,12 +24,6 @@ pr:
       - 'master'
 
 stages:
-  - stage: Versioning
-    condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
-    jobs:
-      - job: Versioning
-        displayName: Versioning job
-
   - stage: Build
     displayName: Build stage
     jobs:
@@ -46,7 +45,7 @@ stages:
             inputs:
               SonarCloud: SonarCloud
               organization: 'tiagor87-github'
-              projectKey: '$(Sonar_ProjectKey)'
+              projectKey: '$(sonar.project_key)'
               projectName: '$(Build.DefinitionName)'
               projectVersion: '$(Build.BuildNumber)'
               extraProperties: |
@@ -64,7 +63,7 @@ stages:
             displayName: 'Build'
             inputs:
               projects: '**/*.csproj'
-              arguments: '--no-restore --configuration Release'
+              arguments: '--no-restore --configuration Release /p:Version=$(version)'
 
           - task: DotNetCoreCLI@2
             displayName: 'Test - opencover'
@@ -88,9 +87,7 @@ stages:
             inputs:
               command: pack
               packagesToPack: 'src/**/*.csproj'
-              nobuild: true
-              configurationToPack: 'Release'
-              versioningScheme: byBuildNumber
+              arguments: '--no-build --configuration Release /p:Version=$(version)'
 
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Package Artifact'
