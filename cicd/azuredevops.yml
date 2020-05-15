@@ -92,6 +92,7 @@ stages:
 
           - task: DotNetCoreCLI@2
             displayName: 'Pack Release'
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master') 
             inputs:
               command: pack
               packagesToPack: 'src/**/*.csproj'
@@ -101,6 +102,7 @@ stages:
 
           - task: PublishBuildArtifacts@1
             displayName: 'Publish Package Artifact'
+            condition: eq(variables['Build.SourceBranch'], 'refs/heads/master')
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
               contents: '**/*.nupkg'
