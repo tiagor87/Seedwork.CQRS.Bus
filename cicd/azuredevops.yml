@@ -114,6 +114,7 @@ stages:
         pool:
           vmImage: ubuntu-latest
         steps:
+          - checkout: none
           - task: DownloadBuildArtifacts@0
             displayName: 'Download Package Artifact'
             inputs:
