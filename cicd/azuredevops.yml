@@ -1,9 +1,13 @@
-name: $(Version_Major).$(Version_Minor)$(rev:.r)
+name: $(version)
 
 variables:
   Sonar_ProjectKey: 'tiagor87_Seedwork.CQRS.Bus'
-  Version_Major: '0'
-  Version_Minor: '2'
+  patch: $[counter(format('{0}.{1}-{2}', variables['major'], variables['minor'], variables['Build.SourceBranch']), 0)]
+  ${{if eq(variables['Build.Reason'], 'PullRequest')}}:
+    sufix: $[format('-pr{0}', variables['System.PullRequest.PullRequestNumber'])]
+  ${{if and(ne(variables['Build.Reason'], 'PullRequest'), eq(variables['Build.SourceBranch'], 'refs/heads/master'))}}:
+    sufix: ''
+  version: $[format('{0}.{1}.{2}{3}', variables['major'], variables['minor'], variables['patch'], variables['sufix'])]
 
 trigger:
   batch: true
@@ -64,12 +68,14 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
 
-          - task: DotNetCoreCLI@2
-            displayName: 'Test - cobertura'
+          - task: reportgenerator@4
+            displayName: ReportGenerator
             inputs:
-              command: test
-              projects: 'tests/**/*.csproj'
-              arguments: '--no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura'
+              reports: 'tests/Core/coverage.opencover.xml'
+              targetdir: 'tests/Core/coverage.cobertura.xml'
+              reporttypes: 'Cobertura;'
+              sourcedirs: 'src'
+              tag: '$(version)'
 
           - task: SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
