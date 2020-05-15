@@ -49,7 +49,7 @@ stages:
               projectVersion: '$(version)'
               extraProperties: |
                 sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
+                sonar.coverageReportPaths=$(Build.SourcesDirectory)/tests/coverage
                 sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
           - task: DotNetCoreCLI@2
@@ -76,7 +76,7 @@ stages:
             inputs:
               reports: 'tests/Core/coverage.opencover.xml'
               targetdir: 'tests/coverage'
-              reporttypes: 'Cobertura;Badges'
+              reporttypes: 'Cobertura;SonarQube'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
