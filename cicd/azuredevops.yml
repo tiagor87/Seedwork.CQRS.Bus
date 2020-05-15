@@ -74,7 +74,7 @@ stages:
           - task: Palmmedia.reportgenerator.reportgenerator-build-release-task.reportgenerator@4
             displayName: ReportGenerator
             inputs:
-              reports: 'tests/**/coverage.opencover.xml'
+              reports: 'tests/Core/coverage.opencover.xml'
               targetdir: 'tests/coverage'
               reporttypes: 'HtmlInline_AzurePipelines;Cobertura;Badges'
 
