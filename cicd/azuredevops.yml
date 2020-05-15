@@ -75,8 +75,8 @@ stages:
             displayName: ReportGenerator
             inputs:
               reports: 'tests/**/coverage.opencover.xml'
-              targetdir: 'tests/**/coverage.cobertura.xml'
-              reporttypes: 'Cobertura'
+              targetdir: 'tests/coverage'
+              reporttypes: 'HtmlInline_AzurePipelines;Cobertura;Badges'
 
           - task: SonarSource.sonarcloud.ce096e50-6155-4de8-8800-4221aaeed4a1.SonarCloudAnalyze@1
             displayName: 'Run Code Analysis'
@@ -99,7 +99,8 @@ stages:
             displayName: 'Publish Coverage Results'
             inputs:
               codeCoverageTool: 'cobertura'
-              summaryFileLocation: $(Build.SourcesDirectory)/tests/**/coverage.cobertura.xml
+              summaryFileLocation: $(Build.SourcesDirectory)/tests/coverage/coverage.cobertura.xml
+              reportDirectory: $(Build.SourcesDirectory)/tests/coverage
 
           - task: SonarSource.sonarcloud.38b27399-a642-40af-bb7d-9971f69712e8.SonarCloudPublish@1
             displayName: 'Publish Quality Gate Result'
