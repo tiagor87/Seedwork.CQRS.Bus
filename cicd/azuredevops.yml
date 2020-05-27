@@ -95,10 +95,7 @@ stages:
               command: pack
               packagesToPack: 'src/**/*.csproj'
               configurationToPack: 'Release'
-              versioningScheme: byPrereleaseNumber
-              majorVersion: $(version.major)
-              minorVersion: $(version.minor)
-              patchVersion: $(version.patch)
+              versioningScheme: byBuildNumber
               verbosityRestore: minimal
               verbosityPack: minimal
   
