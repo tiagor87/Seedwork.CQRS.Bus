@@ -18,10 +18,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="2.2.0" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="2.2.0" />
-    <PackageReference Include="Polly" Version="7.2.0" />
+    <PackageReference Include="Polly" Version="7.2.1" />
     <PackageReference Include="RabbitMQ.Client" Version="6.0.0" />
     <PackageReference Include="TRBufferList.Core" Version="0.0.6" />
-    <PackageReference Include="TRDomainDriven.Core" Version="0.0.3" />
+    <PackageReference Include="TRDomainDriven.Core" Version="0.0.4" />
 </ItemGroup>
 
 </Project>
