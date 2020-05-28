@@ -45,7 +45,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations
             {
                 builder
                     .SetConnectionString("amqp://guest:guest@localhost/")
-                    .SetSerializer<BusSerializerStub>();
+                    .SetSerializer<BusSerializerStub>()
+                    .SetLogger<BusLoggerStub>();
             });
 
             services.Any(x =>
@@ -60,10 +61,48 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations
                 .Should()
                 .BeTrue();
             services.Any(x =>
+                    x.ServiceType == typeof(IBusLogger)
+                    && x.ImplementationType == typeof(BusLoggerStub)
+                    && x.Lifetime == ServiceLifetime.Singleton)
+                .Should()
+                .BeTrue();
+            services.Any(x =>
                     x.ImplementationType == typeof(BusConnection)
                     && x.Lifetime == ServiceLifetime.Singleton)
                 .Should()
                 .BeTrue();
+            
+            var provider = services.BuildServiceProvider();
+            var options = provider.GetService<IOptions<BusConnectionOptions>>();
+            options.Should().NotBeNull();
+            options.Value.Should().NotBeNull();
+            
+            configurationMock.VerifyAll();
+        }
+        
+        [Fact]
+        public void GivenServicesWhenAddBusCoreWithoutLoggerShouldNotFail()
+        {
+            var sectionMock = new Mock<IConfigurationSection>();
+            var configurationMock = new Mock<IConfiguration>();
+            IServiceCollection services = new ServiceCollection();
+            
+            configurationMock.Setup(x => x.GetSection(It.IsAny<string>()))
+                .Returns(sectionMock.Object)
+                .Verifiable();
+
+            services.AddBusCore(configurationMock.Object, builder =>
+            {
+                builder
+                    .SetConnectionString("amqp://guest:guest@localhost/")
+                    .SetSerializer<BusSerializerStub>();
+            });
+            services.Any(x =>
+                    x.ServiceType == typeof(IBusLogger)
+                    && x.ImplementationType == typeof(BusLoggerStub)
+                    && x.Lifetime == ServiceLifetime.Singleton)
+                .Should()
+                .BeFalse();
             
             var provider = services.BuildServiceProvider();
             var options = provider.GetService<IOptions<BusConnectionOptions>>();

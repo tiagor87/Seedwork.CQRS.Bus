@@ -25,6 +25,11 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
                 .AddSingleton(typeof(IBusSerializer), options.SerializerImplementationType)
                 .AddSingleton<BusConnection>();
 
+            if (options.LoggerImplementationType != null)
+            {
+                services.AddSingleton(typeof(IBusLogger), options.LoggerImplementationType);
+            }
+
             services
                 .Configure<BusConnectionOptions>(instance => instance.Bind(options.ConnectionOptions));
 

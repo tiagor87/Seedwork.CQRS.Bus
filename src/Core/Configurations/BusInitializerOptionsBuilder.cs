@@ -9,6 +9,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         private string _connectionString;
         private Type _serializerImplementationType;
         private BusConnectionOptions _options;
+        private Type _loggerImplementationType;
 
         public BusInitializerOptionsBuilder(IConfiguration configuration)
         {
@@ -68,9 +69,21 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             return this;
         }
 
+        public BusInitializerOptionsBuilder SetLogger<T>()
+            where T : class, IBusLogger
+        {
+            if (typeof(T).IsAbstract)
+            {
+                throw new ArgumentException("Logger cannot be abstract.");
+            }
+
+            _loggerImplementationType = typeof(T);
+            return this;
+        }
+ 
         public BusInitializerOptions Build()
         {
-            return new BusInitializerOptions(_connectionString, _options, _serializerImplementationType);
+            return new BusInitializerOptions(_connectionString, _options, _serializerImplementationType, _loggerImplementationType);
         }
     }
 }
