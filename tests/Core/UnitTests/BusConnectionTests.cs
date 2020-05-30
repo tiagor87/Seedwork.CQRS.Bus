@@ -72,7 +72,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             const ushort deliveryTag = 1;
 
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ThrowsAsync(new Exception("Test message"))
+                .Throws(new Exception("Test message"))
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -145,7 +145,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var headersMock = new Mock<IDictionary<string, object>>();
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -190,7 +190,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var headersMock = new Mock<IDictionary<string, object>>();
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -226,7 +226,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var body = Encoding.UTF8.GetBytes("test");
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.SetupSet(x => x.Headers = new Dictionary<string, object>
                 {
@@ -259,7 +259,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var routingKey = RoutingKey.Create("test.route");
             var body = Encoding.UTF8.GetBytes("test");
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -298,7 +298,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var headersMock = new Mock<IDictionary<string, object>>();
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -349,7 +349,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var headersMock = new Mock<IDictionary<string, object>>();
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -391,7 +391,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var headersMock = new Mock<IDictionary<string, object>>();
 
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
-                .ReturnsAsync(body)
+                .Returns(body)
                 .Verifiable();
             _basicPropertiesMock.Setup(x => x.Headers)
                 .Returns(headersMock.Object)
@@ -427,7 +427,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             const ushort deliveryTag = 1;
 
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ReturnsAsync("test")
+                .Returns("test")
                 .Verifiable();
 
             _channelMock.Setup(x => x.BasicConsume(
@@ -490,7 +490,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             const ushort deliveryTag = 1;
 
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ReturnsAsync("test")
+                .Returns("test")
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -546,7 +546,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             var loggerMock = new Mock<IBusLogger>();
 
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ReturnsAsync("test")
+                .Returns("test")
                 .Verifiable();
             _serviceProviderMock.Setup(x => x.GetService(typeof(IBusLogger)))
                 .Returns(loggerMock.Object)
@@ -617,7 +617,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             const ushort deliveryTag = 1;
 
             _busSerializerMock.Setup(x => x.Deserialize<string>(body))
-                .ReturnsAsync("test")
+                .Returns("test")
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);

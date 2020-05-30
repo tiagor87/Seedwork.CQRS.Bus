@@ -73,5 +73,34 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             IEnumerable tasks = new Tasks(0);
             tasks.GetEnumerator().Should().NotBeNull();
         }
+
+        [Fact]
+        public void GivenTaskWhenThrowShouldAddTask()
+        {
+            var tasks = new Tasks(1);
+            var task = new Task(() => throw new Exception());
+            Action action = () => tasks.Add(task);
+            action.Should().NotThrow();
+        }
+        
+        [Fact]
+        public async Task GivenNullTaskShouldAbleToAddWithoutError()
+        {
+            var tasks = new Tasks(100);
+            var tList = new List<Task>();
+            for (var i = 0; i < 10000; i++)
+            {
+                var t = new Task(() =>
+                {
+                    var task = new Task(async () => await Task.Delay(1000));
+                    tasks.Add(task);
+                });
+                t.Start();
+                tList.Add(t);
+            }
+
+            Func<Task> action = () => Task.WhenAll(tList);
+            await action.Should().NotThrowAsync();
+        }
     }
 }

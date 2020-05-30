@@ -22,10 +22,16 @@ namespace Seedwork.CQRS.Bus.Core
 
         public void Add(Task task)
         {
+            if (task == null)
+            {
+                throw new ArgumentNullException(nameof(task));
+            }
+            
             if (task.Status != TaskStatus.Created)
             {
                 throw new InvalidOperationException("It's not possible to control a started task.");
             }
+            
             WaitForFreeSlots().ConfigureAwait(false).GetAwaiter().GetResult();
             _tasks.TryAdd(task.Id, task);
 
@@ -39,12 +45,9 @@ namespace Seedwork.CQRS.Bus.Core
         }
         public async Task WaitForFreeSlots()
         {
-            var freeSlots = _capacity - _isRunningCount;
-
-            while (freeSlots <= 0)
+            while (_capacity <= _isRunningCount)
             {
                 await Task.Delay(100);
-                freeSlots = _capacity - _isRunningCount;
             }
         }
 
@@ -68,9 +71,8 @@ namespace Seedwork.CQRS.Bus.Core
 
             if (disposing)
             {
-                Task.WaitAll(_tasks.Values.ToArray(), TimeSpan.FromMilliseconds(100));
+                Task.WaitAll(_tasks.Values.ToArray(), TimeSpan.FromSeconds(10));
                 _tasks.Clear();
-                _tasks = null;
             }
 
             _disposed = true;
