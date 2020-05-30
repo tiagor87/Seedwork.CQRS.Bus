@@ -161,6 +161,44 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
         }
+        
+        [Fact]
+        public void GivenConnectionWhenSubscribeAndThrowShouldRequeueOnRetryQueueTheRightMessage()
+        {
+            var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
+            var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
+            var routingKey = RoutingKey.Create(queue.Name.Value);
+            const string notification = "Notification message";
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _connectionFixture.Connection.PublishSuccessed += items =>
+            {
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry")))
+                {
+                    autoResetEvent.Set();
+                }
+            };
+
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, notification);
+
+            _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
+            {
+                autoResetEvent.Set();
+                throw new Exception();
+            });
+
+            autoResetEvent.WaitOne(); // Wait for subscribe to execute.
+
+            autoResetEvent.WaitOne(); // Wait for retry message publishing.
+
+            var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
+
+            _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
+            var message = _connectionFixture.Connection.GetMessage(retryQueue);
+            message.Should().NotBeNull();
+            message.Data.Should().Be(notification);
+        }
 
         [Fact]
         public void GivenConnectionWhenSubscribeShouldExecuteCallback()
