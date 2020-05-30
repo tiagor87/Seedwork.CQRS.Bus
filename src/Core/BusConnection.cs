@@ -139,23 +139,21 @@ namespace Seedwork.CQRS.Bus.Core
             {
                 try
                 {
-                    var task = new Task(async () =>
+                    var task = new Task(() =>
                     {
                         try
                         {
                             var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args,
                                 (OnDone, OnFail));
-                            using (var scope = _serviceScopeFactory.CreateScope())
+                            using var scope = _serviceScopeFactory.CreateScope();
+                            try
                             {
-                                try
-                                {
-                                    await action.Invoke(scope, message);
-                                    if (autoAck) message.Complete();
-                                }
-                                catch (Exception exception)
-                                {
-                                    message.Fail(exception);
-                                }
+                                action.Invoke(scope, message).GetAwaiter().GetResult();
+                                if (autoAck) message.Complete();
+                            }
+                            catch (Exception exception)
+                            {
+                                message.Fail(exception);
                             }
                         }
                         catch (Exception exception)
@@ -217,6 +215,11 @@ namespace Seedwork.CQRS.Bus.Core
                 _publisherBuffer.Add(item);
             }
         }
+
+        public void Flush()
+        {
+            _publisherBuffer.Clear();
+        } 
 
         ~BusConnection()
         {
@@ -287,32 +290,30 @@ namespace Seedwork.CQRS.Bus.Core
                         })
                     .Execute(() =>
                     {
-                        using (var channel = PublisherConnection.CreateModel())
+                        using var channel = PublisherConnection.CreateModel();
+                        var batch = channel.CreateBasicPublishBatch();
+                        try
                         {
-                            var batch = channel.CreateBasicPublishBatch();
-                            try
+                            foreach (var group in items.GroupBy(x => (x.Exchange, x.Queue, x.RoutingKey)))
                             {
-                                foreach (var group in items.GroupBy(x => (x.Exchange, x.Queue, x.RoutingKey)))
+                                var (exchange, queue, routingKey) = @group.Key;
+                                exchange.Declare(channel);
+                                queue?.Declare(channel);
+                                queue?.Bind(channel, exchange, routingKey);
+                                foreach (var item in @group)
                                 {
-                                    var (exchange, queue, routingKey) = group.Key;
-                                    exchange.Declare(channel);
-                                    queue?.Declare(channel);
-                                    queue?.Bind(channel, exchange, routingKey);
-                                    foreach (var item in group)
-                                    {
-                                        var (body, basicProperties) =
-                                            item.Message.GetData(channel, _serializer);
-                                        batch.Add(exchange.Name.Value, routingKey.Value, false,
-                                            basicProperties, body);
-                                    }
+                                    var (body, basicProperties) =
+                                        item.Message.GetData(channel, _serializer);
+                                    batch.Add(exchange.Name.Value, routingKey.Value, false,
+                                        basicProperties, body);
                                 }
+                            }
 
-                                batch.Publish();
-                            }
-                            finally
-                            {
-                                channel.Close();
-                            }
+                            batch.Publish();
+                        }
+                        finally
+                        {
+                            channel.Close();
                         }
                     });
 

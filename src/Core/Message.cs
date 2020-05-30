@@ -37,7 +37,7 @@ namespace Seedwork.CQRS.Bus.Core
 
         protected internal virtual (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
         {
-            var body = serializer.Serialize(Data).GetAwaiter().GetResult();
+            var body = serializer.Serialize(Data);
             var basicProperties = channel.CreateBasicProperties();
             basicProperties.Headers = new Dictionary<string, object>
             {
@@ -171,7 +171,7 @@ namespace Seedwork.CQRS.Bus.Core
             BasicDeliverEventArgs @event,
             ValueTuple<Action<Message<T>>, Action<Exception, Message<T>>> actions)
         {
-            var data = serializer.Deserialize<T>(@event.Body.ToArray()).GetAwaiter().GetResult();
+            var data = serializer.Deserialize<T>(@event.Body.ToArray());
             if (@event.BasicProperties.Headers == null ||
                 !@event.BasicProperties.Headers.TryGetValue(nameof(MaxAttempts), out var maxAttempts))
             {
