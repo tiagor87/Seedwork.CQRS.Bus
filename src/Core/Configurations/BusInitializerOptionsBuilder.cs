@@ -7,6 +7,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
     {
         private readonly IConfiguration _configuration;
         private string _connectionString;
+        private bool _validateCertificate;
         private Type _serializerImplementationType;
         private BusConnectionOptions _options;
         private Type _loggerImplementationType;
@@ -25,6 +26,18 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             }
 
             _connectionString = connectionString;
+            return this;
+        }
+        
+        public BusInitializerOptionsBuilder IgnoreCertificate()
+        {
+            _validateCertificate = false;
+            return this;
+        }
+        
+        public BusInitializerOptionsBuilder ValidateCertificate()
+        {
+            _validateCertificate = true;
             return this;
         }
         
@@ -83,7 +96,12 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
  
         public BusInitializerOptions Build()
         {
-            return new BusInitializerOptions(_connectionString, _options, _serializerImplementationType, _loggerImplementationType);
+            return new BusInitializerOptions(
+                _connectionString,
+                _validateCertificate,
+                _options,
+                _serializerImplementationType,
+                _loggerImplementationType);
         }
     }
 }

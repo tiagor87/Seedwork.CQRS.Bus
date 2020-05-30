@@ -2,6 +2,8 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Security;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,7 +55,7 @@ namespace Seedwork.CQRS.Bus.Core
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
             IOptions<BusConnectionOptions> options,
-            IBusLogger logger = null) : this(GetConnectionFactory(connectionString.Value), serializer,
+            IBusLogger logger = null) : this(GetConnectionFactory(connectionString), serializer,
             serviceScopeFactory, options, logger)
         {
         }
@@ -221,17 +223,27 @@ namespace Seedwork.CQRS.Bus.Core
             Dispose(false);
         }
 
-        private static IConnectionFactory GetConnectionFactory(Uri connectionString)
+        private static IConnectionFactory GetConnectionFactory(BusConnectionString connectionString)
         {
-            return new ConnectionFactory
+            var factory = new ConnectionFactory
             {
-                Uri = connectionString,
+                Uri = connectionString.Value,
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
                 RequestedHeartbeat = TimeSpan.FromSeconds(30),
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
+            
+            if (!connectionString.ValidateCertificate)
+            {
+                factory.Ssl.CertificateValidationCallback = (sender, certificate, chain, errors) => true;
+                factory.Ssl.AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateChainErrors |
+                                                     SslPolicyErrors.RemoteCertificateNotAvailable |
+                                                     SslPolicyErrors.RemoteCertificateNameMismatch;
+            }
+
+            return factory;
         }
 
         private void OnDone<T>(Message<T> message) => message.Channel.BasicAck(message.DeliveryTag, false);

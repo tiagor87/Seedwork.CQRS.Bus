@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
         public BusConnectionFixture()
         {
             _serviceProvider = new ServiceCollection()
-                .AddSingleton(BusConnectionString.Create("amqp://guest:guest@localhost:5672/"))
+                .AddSingleton(BusConnectionString.Create("amqp://guest:guest@localhost:5672/", false))
                 .AddSingleton<IBusSerializer, BusSerializer>()
                 .AddSingleton<BusConnection>()
                 .AddSingleton(Options.Create(BusOptions))

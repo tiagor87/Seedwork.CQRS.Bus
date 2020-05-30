@@ -21,6 +21,15 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             connectionString.Should().NotBeNull();
         }
+        
+        [Fact]
+        public void GivenBusConnectionStringWhenIgnoreCertificateErrorsShouldCreate()
+        {
+            var connectionString = BusConnectionString.Create("amqp://guest:guest@localhost/", false);
+
+            connectionString.Should().NotBeNull();
+            connectionString.ValidateCertificate.Should().BeFalse();
+        }
 
         [Fact]
         public void GivenConnectionStringsWhenValuesAreSameShouldBeEquals()

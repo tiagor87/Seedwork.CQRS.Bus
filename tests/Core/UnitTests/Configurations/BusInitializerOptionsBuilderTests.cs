@@ -136,6 +136,21 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations
         }
         
         [Fact]
+        public void GivenBusInitializerOptionsWhenIgnoreCertificateShouldSetValidateToFalse()
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            
+            var builder = new BusInitializerOptionsBuilder(configuration);
+            var options = builder
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .IgnoreCertificate()
+                .SetSerializer<BusSerializerStub>()
+                .Build();
+
+            options.ValidateCertificate.Should().BeFalse();
+        }
+        
+        [Fact]
         public void GivenBusInitializerOptionsWhenSetOptionsShouldLoadOptions()
         {
             var configuration = new ConfigurationBuilder().Build();

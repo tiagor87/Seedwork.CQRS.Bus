@@ -21,7 +21,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             var options = builder.Build();
 
             services
-                .AddSingleton(BusConnectionString.Create(options.ConnectionString))
+                .AddSingleton(BusConnectionString.Create(options.ConnectionString, options.ValidateCertificate))
                 .AddSingleton(typeof(IBusSerializer), options.SerializerImplementationType)
                 .AddSingleton<BusConnection>();
 
