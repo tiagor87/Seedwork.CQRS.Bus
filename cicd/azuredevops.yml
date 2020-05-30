@@ -36,18 +36,18 @@ stages:
               targetType: 'inline'
               script: 'docker run -p 5672:5672 -d rabbitmq:alpine'
 
-          - task: SonarCloudPrepare@1
-            displayName: 'Prepare analysis on SonarCloud'
-            inputs:
-              SonarCloud: SonarCloud
-              organization: 'tiagor87-github'
-              projectKey: '$(sonar.projectKey)'
-              projectName: '$(Build.DefinitionName)'
-              projectVersion: '$(version.major).$(version.minor).$(version.patch)'
-              extraProperties: |
-                sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
-                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
-                sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
+#          - task: SonarCloudPrepare@1
+#            displayName: 'Prepare analysis on SonarCloud'
+#            inputs:
+#              SonarCloud: SonarCloud
+#              organization: 'tiagor87-github'
+#              projectKey: '$(sonar.projectKey)'
+#              projectName: '$(Build.DefinitionName)'
+#              projectVersion: '$(version.major).$(version.minor).$(version.patch)'
+#              extraProperties: |
+#                sonar.exclusions=**/lib/**,**/obj/**,**/*.dll,**/tests/**
+#                sonar.cs.opencover.reportsPaths=$(Build.SourcesDirectory)/tests/**/coverage.opencover.xml
+#                sonar.cs.vstest.reportsPaths=$(Agent.TempDirectory)/*.trx
 
           - task: DotNetCoreCLI@2
             displayName: 'Build'
@@ -63,11 +63,11 @@ stages:
               projects: 'tests/**/*.csproj'
               arguments: '--no-build --configuration Release -p:CollectCoverage=true -p:CoverletOutputFormat=opencover'
 
-          - task: SonarCloudAnalyze@1
-            displayName: 'Run Code Analysis'
+#          - task: SonarCloudAnalyze@1
+#            displayName: 'Run Code Analysis'
             
-          - task: SonarCloudPublish@1
-            displayName: 'Publish Quality Gate Result'
+#          - task: SonarCloudPublish@1
+#            displayName: 'Publish Quality Gate Result'
               
           - task: reportgenerator@4
             displayName: ReportGenerator
