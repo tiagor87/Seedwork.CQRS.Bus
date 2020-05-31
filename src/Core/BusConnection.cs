@@ -219,6 +219,7 @@ namespace Seedwork.CQRS.Bus.Core
         public void Flush()
         {
             _publisherBuffer.Clear();
+            Task.Delay(1000).Wait();
         } 
 
         ~BusConnection()
@@ -233,7 +234,7 @@ namespace Seedwork.CQRS.Bus.Core
                 Uri = connectionString.Value,
                 AutomaticRecoveryEnabled = true,
                 TopologyRecoveryEnabled = true,
-                RequestedHeartbeat = TimeSpan.FromSeconds(30),
+                RequestedHeartbeat = 30,
                 NetworkRecoveryInterval = TimeSpan.FromSeconds(10),
                 DispatchConsumersAsync = true
             };
@@ -340,6 +341,8 @@ namespace Seedwork.CQRS.Bus.Core
 
             if (disposing)
             {
+                _publisherBuffer.Clear();
+                
                 foreach (var consumerGroup in _consumers)
                 {
                     var key = consumerGroup.Key;
@@ -350,8 +353,7 @@ namespace Seedwork.CQRS.Bus.Core
                     channel.Close();
                     channel.Dispose();
                 }
-
-                _publisherBuffer.Clear();
+                
                 _consumerConnection?.Close();
                 _consumerConnection?.Dispose();
                 _publisherConnection?.Close();
