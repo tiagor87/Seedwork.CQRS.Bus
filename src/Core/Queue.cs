@@ -193,7 +193,7 @@ namespace Seedwork.CQRS.Bus.Core
 
         protected internal Queue CreateRetryQueue(TimeSpan ttl)
         {
-            return Create($"{Name.Value}-retry-{ttl.TotalMinutes}min")
+            return Create($"{Name.Value}-retry")
                 .WithDurability(Durability.Durable)
                 .MessagesExpiresIn(ttl)
                 .SendExpiredMessagesTo(Exchange.Default, RoutingKey.Create(Name.Value));
