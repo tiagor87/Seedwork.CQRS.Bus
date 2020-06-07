@@ -69,9 +69,7 @@ _connectionFixture.Connection.Subscribe<string>(
     prefetchCount,
     async (scope, message) =>
     {
-        var mediator = scope.GetService<IMediator>();
-        var command = Command.Create(message);
-        await mediator.SendAsync(command);
+        // process message
     });
 ```
 
