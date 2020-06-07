@@ -95,7 +95,7 @@ services
                 // Progressão geométrica
                 .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
                 // Custom
-                UseRetryBehabior(IRetryBehavior);
+                UseRetryBehavior(IRetryBehavior);
         });
 ```
 
@@ -131,7 +131,7 @@ _connection.Publish(exchange, queue, routingKey, message);
 * **PublishSuccessed**: Quando a publicação for bem-sucedida, o sistema enviará esse evento com as mensagens que obtiveram sucesso.
 
 ```c#
-Connection.PublishSuccessed += items => 
+_connection.PublishSuccessed += items => 
 {
     ...
 };
@@ -140,7 +140,7 @@ Connection.PublishSuccessed += items =>
 * **PublishFailed**: 103/5000Quando a publicação falha após todas as tentativas, o sistema despacha esse evento com as mensagens e exceção.
 
 ```c#
-Connection.PublishFailed += (items, exception) => 
+_connection.PublishFailed += (items, exception) => 
 {
     ...
 };
