@@ -592,7 +592,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.QueueDeclare(
-                It.Is((string y) => y.EndsWith("-retry")),
+                It.Is((string y) => y.EndsWith("-retry-1m")),
                 true,
                 false,
                 false,
@@ -601,7 +601,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                     && args["x-dead-letter-routing-key"].Equals(queue.Name.Value))), Times.Once());
             _publishBatchMock.Verify(x => x.Add(
                 Exchange.Default.Name.Value,
-                It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry")),
+                It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry-1m")),
                 false,
                 _basicPropertiesMock.Object,
                 It.IsAny<byte[]>()), Times.Once());

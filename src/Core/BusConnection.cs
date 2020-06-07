@@ -11,6 +11,7 @@ using Microsoft.Extensions.Options;
 using Polly;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 using TRBufferList.Core;
 
 namespace Seedwork.CQRS.Bus.Core
@@ -32,12 +33,14 @@ namespace Seedwork.CQRS.Bus.Core
         private IConnection _consumerConnection;
         private bool _disposed;
         private IConnection _publisherConnection;
+        private readonly IRetryBehavior _retryBehavior;
 
         public BusConnection(IConnectionFactory connectionFactory,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
             IOptions<BusConnectionOptions> options,
-            IBusLogger logger = null)
+            IBusLogger logger = null,
+            IRetryBehavior retryBehavior = null)
         {
             _serializer = serializer ?? throw new ArgumentNullException(nameof(serializer));
             _serviceScopeFactory = serviceScopeFactory;
@@ -49,13 +52,15 @@ namespace Seedwork.CQRS.Bus.Core
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
                     TimeSpan.FromMilliseconds(_options.Value.PublisherBufferTtlInMilliseconds));
             _publisherBuffer.Cleared += PublishBufferOnCleared;
+            _retryBehavior = retryBehavior ?? new ArithmeticProgressionRetryBehavior(1);
         }
 
         public BusConnection(BusConnectionString connectionString,
             IBusSerializer serializer,
             IServiceScopeFactory serviceScopeFactory,
             IOptions<BusConnectionOptions> options,
-            IBusLogger logger = null) : this(GetConnectionFactory(connectionString), serializer,
+            IBusLogger logger = null,
+            IRetryBehavior retryBehavior = null) : this(GetConnectionFactory(connectionString), serializer,
             serviceScopeFactory, options, logger)
         {
         }
@@ -254,10 +259,10 @@ namespace Seedwork.CQRS.Bus.Core
 
         private void OnFail<T>(Exception exception, Message<T> message)
         {
-            if (message.CanRetry())
+            if (_retryBehavior.ShouldRetry(message.AttemptCount, message.MaxAttempts))
             {
                 var retryQueue = message.Queue
-                    .CreateRetryQueue(TimeSpan.FromMinutes(1));
+                    .CreateRetryQueue(_retryBehavior.GetWaitTime(message.AttemptCount));
                 var retryRoutingKey = RoutingKey.Create(retryQueue.Name.Value);
                 Publish(Exchange.Default, retryQueue, retryRoutingKey, message);
             }

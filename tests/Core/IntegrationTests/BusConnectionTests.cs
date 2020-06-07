@@ -139,7 +139,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.PublishSuccessed += items =>
             {
-                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry")))
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry-1m")))
                 {
                     autoResetEvent.Set();
                 }
@@ -157,7 +157,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             autoResetEvent.WaitOne(); // Wait for retry message publishing.
 
-            var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
+            var retryQueue = Queue.Create($"{queue.Name.Value}-retry-1m");
 
             _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
         }
@@ -174,7 +174,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.PublishSuccessed += items =>
             {
-                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry")))
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry-1m")))
                 {
                     autoResetEvent.Set();
                 }
@@ -192,7 +192,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             autoResetEvent.WaitOne(); // Wait for retry message publishing.
 
-            var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
+            var retryQueue = Queue.Create($"{queue.Name.Value}-retry-1m");
 
             _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
             var message = _connectionFixture.Connection.GetMessage(retryQueue);
@@ -212,7 +212,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.PublishSuccessed += items =>
             {
-                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry")))
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry-1m")))
                 {
                     autoResetEvent.Set();
                 }
@@ -235,7 +235,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             autoResetEvent.WaitOne(); // Wait for retry message publishing.
 
-            var retryQueue = Queue.Create($"{queue.Name.Value}-retry");
+            var retryQueue = Queue.Create($"{queue.Name.Value}-retry-1m");
 
             _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
             var message = _connectionFixture.Connection.GetMessage(retryQueue);

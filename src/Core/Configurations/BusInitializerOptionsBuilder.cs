@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Configuration;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 
 namespace Seedwork.CQRS.Bus.Core.Configurations
 {
@@ -11,11 +12,13 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         private Type _serializerImplementationType;
         private BusConnectionOptions _options;
         private Type _loggerImplementationType;
+        private IRetryBehavior _retryBehavior;
 
         public BusInitializerOptionsBuilder(IConfiguration configuration)
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             SetOptions("BusConnectionOptions");
+            UseArithmeticProgressionRetryBehavior(1);
         }
 
         public BusInitializerOptionsBuilder SetConnectionString(string connectionString)
@@ -26,6 +29,24 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             }
 
             _connectionString = connectionString;
+            return this;
+        }
+
+        public BusInitializerOptionsBuilder UseRetryBehabior(IRetryBehavior retryBehavior)
+        {
+            _retryBehavior = retryBehavior;
+            return this;
+        }
+
+        public BusInitializerOptionsBuilder UseArithmeticProgressionRetryBehavior(int coeficient, int initialValue = 1)
+        {
+            _retryBehavior = new ArithmeticProgressionRetryBehavior(coeficient, initialValue);
+            return this;
+        }
+        
+        public BusInitializerOptionsBuilder UseGeometricProgressionRetryBehavior(int coeficient, int initialValue = 1)
+        {
+            _retryBehavior = new GeometricProgressionRetryBehavior(coeficient, initialValue);
             return this;
         }
         
@@ -101,7 +122,8 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
                 _validateCertificate,
                 _options,
                 _serializerImplementationType,
-                _loggerImplementationType);
+                _loggerImplementationType,
+                _retryBehavior);
         }
     }
 }

@@ -12,25 +12,10 @@ __Seedwork.CQRS.Bus__ é um projeto para facilitar a utilização do RabbitMQ no
 ```csharp
 services
     .AddBusCore(
-        options =>
-        {
-            options
-                .SetOptions("BusConnectionOptions")
-                .SetConnectionString("amqp://guest:guest@localhost/")
-                .SetSerializer<BusSerializer>();
-        });
-```
-
-ou
-
-```csharp
-services
-    .AddBusCore(
         configuration,
         options =>
         {
             options
-                .SetOptions("BusConnectionOptions")
                 .SetConnectionString("amqp://guest:guest@localhost/")
                 .SetSerializer<BusSerializer>();
         });
@@ -48,7 +33,7 @@ var queue = Queue.Create($"exchange.queue-created");
 var routingKey = RoutingKey.Create(queue.Name.Value);
 string message = "Message";
 
-await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+_connection.Publish(exchange, queue, routingKey, message);
 ```
 
 ### Como publicar uma lista de mensagens?
@@ -63,7 +48,7 @@ string[] messages = new [] {
     "Message N"
 };
 
-await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, messages);
+_connection.PublishBatch(exchange, queue, routingKey, messages);
 ```
 
 ## Como processar uma mensagem?
@@ -76,9 +61,7 @@ _connectionFixture.Connection.Subscribe<string>(
     prefetchCount,
     async (scope, message) =>
     {
-        var mediator = scope.GetService<IMediator>();
-        var command = Command.Create(message);
-        await mediator.SendAsync(command);
+        // processa mensagem
     });
 ```
 
@@ -87,6 +70,34 @@ _connectionFixture.Connection.Subscribe<string>(
 * Quando ocorre uma falha no processamento da mensagem, a aplicação re-enfileira a mensagem na fila de retentativa com um tempo de atraso, para enviá-la a fila principal ao fim deste tempo;
 * Quando o número máximo de tentativas de processamento é atingida, a aplicação move a mensagem para a fila de falha;
 * Quando o sistema falha ao re-enfileirar, é realizado _Nack_ da mensagem.
+
+#### Qual o tempo de espera para retentativa?
+
+Existem duas opções para o cálculo de tempo de espera disponíveis na biblioteca. São eles:
+
+* __ArithmeticProgressionRetryBehavior__: O cálculo de espera obedece uma progressão aritmética aqui. T[final] = T[inicial] + (tentativa - 1) * coeficiente;
+* __GeometricProgressionRetryBehavior__: O cálculo de espera obedece uma progressão geométrica aqui. T[final] = T[inicial] * pow(coeficiente, tentativa - 1);
+
+
+* Também é possível implementar a interface IRetryBehavior e cálcular seu próprio tempo.
+
+#### Como faço para selecionar o tempo de espera?
+
+```c#
+services
+    .AddBusCore(
+        configuration,
+        options =>
+        {
+            options
+                // Progressão aritmética
+                .UseArithmeticProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
+                // Progressão geométrica
+                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
+                // Custom
+                UseRetryBehabior(IRetryBehavior);
+        });
+```
 
 #### Como posso configurar o número máximo de tentativas?
 
@@ -98,7 +109,7 @@ var message = Message.Create(
     "Message", // data
     10);       // max attempts
 
-await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+_connection.Publish(exchange, queue, routingKey, message);
 ```
 
 * Quando não definido o número máximo de tentantivas, um valor __padrão__ será definido.

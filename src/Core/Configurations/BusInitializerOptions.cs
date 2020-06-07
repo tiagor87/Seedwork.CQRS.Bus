@@ -9,7 +9,8 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             bool validateCertificate,
             BusConnectionOptions connectionOptions,
             Type serializerImplementationType,
-            Type loggerImplementationType)
+            Type loggerImplementationType,
+            IRetryBehavior retryBehavior)
         {
             ConnectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
             ValidateCertificate = validateCertificate;
@@ -17,6 +18,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             SerializerImplementationType = serializerImplementationType ??
                                            throw new ArgumentNullException(nameof(serializerImplementationType));
             LoggerImplementationType = loggerImplementationType;
+            RetryBehavior = retryBehavior ?? throw new ArgumentNullException(nameof(retryBehavior));
         }
 
         public BusConnectionOptions ConnectionOptions { get; protected set; }
@@ -24,5 +26,6 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         public bool ValidateCertificate { get; protected set; }
         public  Type SerializerImplementationType { get; protected set; }
         public Type LoggerImplementationType { get; protected set; }
+        public IRetryBehavior RetryBehavior { get; protected set; }
     }
 }

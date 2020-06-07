@@ -19,20 +19,6 @@ __BusConnection__ requires:
 ```csharp
 services
     .AddBusCore(
-        options =>
-        {
-            options
-                .SetOptions("BusConnectionOptions")
-                .SetConnectionString("amqp://guest:guest@localhost/")
-                .SetSerializer<BusSerializer>();
-        });
-```
-
-or
-
-```csharp
-services
-    .AddBusCore(
         configuration,
         options =>
         {
@@ -94,6 +80,34 @@ _connectionFixture.Connection.Subscribe<string>(
 * When a message fails to be processed, the application will re-queue it to the retry-queue with a message expiration, to send it back to the main queue later;
 * When the max attempts is achivied, the application will route it to failed-queue;
 * When the system fails to re-queue, it will nack the message.
+
+#### How long it takes to requeue message to the main queue?
+
+There are two options:
+
+* __ArithmeticProgressionRetryBehavior__: T[final] = T[initial] + (attempt - 1) * coeficient;
+* __GeometricProgressionRetryBehavior__: T[final] = T[initial] * pow(coeficient, attempt - 1);
+
+
+* You can set your own method too.
+
+#### How can I set the retry behavior?
+
+```c#
+services
+    .AddBusCore(
+        configuration,
+        options =>
+        {
+            options
+                // Aritmethic progression 
+                .UseArithmeticProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
+                // Geometric progression
+                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
+                // Custom behavior
+                UseRetryBehabior(IRetryBehavior);
+        });
+```
 
 #### How can I configure the max attempts?
 
