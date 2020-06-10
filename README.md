@@ -41,7 +41,7 @@ var queue = Queue.Create($"exchange.queue-created");
 var routingKey = RoutingKey.Create(queue.Name.Value);
 string message = "Message";
 
-await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+_connection.Publish(exchange, queue, routingKey, message);
 ```
 
 ### How to publish a list of messages?
@@ -56,7 +56,7 @@ string[] messages = new [] {
     "Message N"
 };
 
-await _connectionFixture.Connection.PublishBatch(exchange, queue, routingKey, messages);
+_connection.PublishBatch(exchange, queue, routingKey, messages);
 ```
 
 ## How to process a message?
@@ -69,9 +69,7 @@ _connectionFixture.Connection.Subscribe<string>(
     prefetchCount,
     async (scope, message) =>
     {
-        var mediator = scope.GetService<IMediator>();
-        var command = Command.Create(message);
-        await mediator.SendAsync(command);
+        // process message
     });
 ```
 
@@ -105,7 +103,7 @@ services
                 // Geometric progression
                 .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
                 // Custom behavior
-                UseRetryBehabior(IRetryBehavior);
+                UseRetryBehavior(IRetryBehavior);
         });
 ```
 
@@ -119,7 +117,7 @@ var message = Message.Create(
     "Message", // data
     10);       // max attempts
 
-await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
+_connection.Publish(exchange, queue, routingKey, message);
 ```
 
 * When publisher not set max attempts, a __default__ value will be set.
@@ -141,7 +139,7 @@ await _connectionFixture.Connection.Publish(exchange, queue, routingKey, message
 * **PublishSuccessed**: When publish success, the system will dispatch this event with messages sent.
 
 ```c#
-Connection.PublishSuccessed += items => 
+_connection.PublishSuccessed += items => 
 {
     ...
 };
@@ -150,7 +148,7 @@ Connection.PublishSuccessed += items =>
 * **PublishFailed**: When publish fails after all attempts, the system will dispatch this event with messages and exception.
 
 ```c#
-Connection.PublishFailed += (items, exception) => 
+_connection.PublishFailed += (items, exception) => 
 {
     ...
 };
