@@ -12,7 +12,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private bool _disposed;
         private readonly int _capacity;
-        private ConcurrentDictionary<int, Task> _tasks = new ConcurrentDictionary<int, Task>();
+        private readonly ConcurrentDictionary<int, Task> _tasks = new ConcurrentDictionary<int, Task>();
         private int _isRunningCount;
 
         public Tasks(int capacity)
