@@ -245,7 +245,9 @@ namespace Seedwork.CQRS.Bus.Core
             
             if (!connectionString.ValidateCertificate)
             {
+                //NOSONAR
                 factory.Ssl.CertificateValidationCallback = (sender, certificate, chain, errors) => true;
+                //NOSONAR
                 factory.Ssl.AcceptablePolicyErrors = SslPolicyErrors.RemoteCertificateChainErrors |
                                                      SslPolicyErrors.RemoteCertificateNotAvailable |
                                                      SslPolicyErrors.RemoteCertificateNameMismatch;
