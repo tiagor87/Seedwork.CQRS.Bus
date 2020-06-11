@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
+using Seedwork.CQRS.Bus.Core.Configurations;
 using Xunit;
 
 namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
@@ -272,6 +276,60 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             callbackScope.Should().NotBeNull();
             callbackMessage.Should().Be(notification);
+        }
+
+        [Fact]
+        public void GivenConnectionWhenRetryShouldUseConfiguredBehavior()
+        {
+            var configuration = new ConfigurationBuilder()
+                .Build();
+            
+            var retryBehaviorMock = new Mock<IRetryBehavior>();
+            var serviceProvider = new ServiceCollection()
+                .AddBusCore(configuration, builder =>
+                {
+                    builder.SetConnectionString("amqp://guest:guest@localhost:5672/")
+                        .IgnoreCertificate()
+                        .SetSerializer<BusSerializer>()
+                        .UseRetryBehabior(retryBehaviorMock.Object);
+                })
+                .BuildServiceProvider();
+
+            var connection = serviceProvider.GetService<BusConnection>();
+
+            var exchange = Exchange.Default;
+            var queue = Queue.Create(Guid.NewGuid().ToString());
+            var routingKey = RoutingKey.Create(queue.Name.Value);
+            BatchItem item = null;
+            
+            connection.Publish(exchange, queue, routingKey, "Message");
+
+            var autoResetEvent = new AutoResetEvent(false);
+            connection.PublishSuccessed += items =>
+            {
+                item = items.First();
+                autoResetEvent.Set();
+            };
+
+            autoResetEvent.WaitOne();
+
+            retryBehaviorMock.Setup(x => x.ShouldRetry(1, 5))
+                .Returns(true)
+                .Verifiable();
+            retryBehaviorMock.Setup(x => x.GetWaitTime(1))
+                .Returns(TimeSpan.FromMinutes(5))
+                .Verifiable();
+            
+            connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
+            {
+                throw new Exception("Test");
+            });
+
+            autoResetEvent.WaitOne();
+
+            item.Should().NotBeNull();
+            item.Queue.Name.Value.Should().EndWith("5m");
+            retryBehaviorMock.VerifyAll();
         }
     }
 }

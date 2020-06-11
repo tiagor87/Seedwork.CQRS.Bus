@@ -61,7 +61,7 @@ namespace Seedwork.CQRS.Bus.Core
             IOptions<BusConnectionOptions> options,
             IBusLogger logger = null,
             IRetryBehavior retryBehavior = null) : this(GetConnectionFactory(connectionString), serializer,
-            serviceScopeFactory, options, logger)
+            serviceScopeFactory, options, logger, retryBehavior)
         {
         }
 

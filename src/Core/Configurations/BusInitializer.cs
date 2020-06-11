@@ -23,8 +23,8 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
             services
                 .AddSingleton(BusConnectionString.Create(options.ConnectionString, options.ValidateCertificate))
                 .AddSingleton(typeof(IBusSerializer), options.SerializerImplementationType)
-                .AddSingleton<BusConnection>()
-                .AddSingleton(options.RetryBehavior);
+                .AddSingleton<IRetryBehavior>(options.RetryBehavior)
+                .AddSingleton<BusConnection>();
 
             if (options.LoggerImplementationType != null)
             {
