@@ -76,7 +76,7 @@ _connectionFixture.Connection.Subscribe<string>(
 ### When fails to process a message, whats happens?
 
 * When a message fails to be processed, the application will re-queue it to the retry-queue with a message expiration, to send it back to the main queue later;
-* When the max attempts is achivied, the application will route it to failed-queue;
+* When the max attempts is achieved, the application will route it to failed-queue;
 * When the system fails to re-queue, it will nack the message.
 
 #### How long it takes to requeue message to the main queue?
