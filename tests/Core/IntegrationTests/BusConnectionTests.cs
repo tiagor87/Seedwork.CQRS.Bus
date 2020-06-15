@@ -294,7 +294,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
                 })
                 .BuildServiceProvider();
 
-            var connection = serviceProvider.GetService<BusConnection>();
+            var connection = serviceProvider.GetService<IBusConnection>();
 
             var exchange = Exchange.Default;
             var queue = Queue.Create(Guid.NewGuid().ToString());

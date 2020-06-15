@@ -1,6 +1,8 @@
 ﻿using System;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using RabbitMQ.Client;
+using RabbitMQ.Client.Framing.Impl;
 
 namespace Seedwork.CQRS.Bus.Core.Configurations
 {
@@ -24,7 +26,8 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
                 .AddSingleton(BusConnectionString.Create(options.ConnectionString, options.ValidateCertificate))
                 .AddSingleton(typeof(IBusSerializer), options.SerializerImplementationType)
                 .AddSingleton<IRetryBehavior>(options.RetryBehavior)
-                .AddSingleton<BusConnection>();
+                .AddSingleton<IConnection, Connection>()
+                .AddSingleton<IBusConnection, BusConnection>();
 
             if (options.LoggerImplementationType != null)
             {
