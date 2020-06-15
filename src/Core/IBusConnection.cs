@@ -10,8 +10,8 @@ namespace Seedwork.CQRS.Bus.Core
     {
         void Declare(Exchange exchange, Queue queue, params RoutingKey[] routingKeys);
 
-        public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
-                                 Func<IServiceScope, Message<T>, Task> action, bool autoAck = true);
+        void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
+                          Func<IServiceScope, Message<T>, Task> action, bool autoAck = true);
 
         void Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message);
 
@@ -28,12 +28,6 @@ namespace Seedwork.CQRS.Bus.Core
         event PublishSuccessed PublishSuccessed;
 
         event PublishFailed PublishFailed;
-
-        IConnection PublisherConnection { get; }
-
-        IConnection ConsumerConnection { get; }
-
-        new void Dispose();
 
         void Flush();
     }

@@ -15,7 +15,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         {
             if (configuration == null) throw new ArgumentNullException(nameof(configuration));
             if (configure == null) throw new ArgumentNullException(nameof(configure));
-            
+
             var builder = new BusInitializerOptionsBuilder(configuration);
 
             configure(builder);
@@ -26,8 +26,8 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
                 .AddSingleton(BusConnectionString.Create(options.ConnectionString, options.ValidateCertificate))
                 .AddSingleton(typeof(IBusSerializer), options.SerializerImplementationType)
                 .AddSingleton<IRetryBehavior>(options.RetryBehavior)
-                .AddSingleton<IConnection, Connection>()
-                .AddSingleton<IBusConnection, BusConnection>();
+                .AddSingleton<IBusConnection, BusConnection>()
+                .AddSingleton(typeof(BusConnection));
 
             if (options.LoggerImplementationType != null)
             {
