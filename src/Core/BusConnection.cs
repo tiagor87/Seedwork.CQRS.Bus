@@ -19,7 +19,7 @@ namespace Seedwork.CQRS.Bus.Core
 
     public delegate void PublishFailed(IEnumerable<BatchItem> items, Exception exception);
 
-    public class BusConnection : IDisposable
+    public class BusConnection : IBusConnection
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;

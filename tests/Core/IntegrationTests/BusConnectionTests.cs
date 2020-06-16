@@ -164,7 +164,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
         }
-        
+
         [Fact]
         public void GivenConnectionWhenSubscribeAndThrowShouldRequeueOnRetryQueueTheRightMessage()
         {
@@ -202,7 +202,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             message.Should().NotBeNull();
             message.Data.Should().Be(notification);
         }
-        
+
         [Fact]
         public void GivenConnectionWhenSubscribeAndFailShouldRequeueOnRetryQueueTheRightMessage()
         {
@@ -233,7 +233,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             }, false);
 
             autoResetEvent.WaitOne(); // Wait for subscribe to execute.
-            
+
             consumerMessage.Fail(new Exception());
 
             autoResetEvent.WaitOne(); // Wait for retry message publishing.
@@ -277,12 +277,14 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             callbackMessage.Should().Be(notification);
         }
 
-        [Fact]
-        public void GivenConnectionWhenRetryShouldUseConfiguredBehavior()
+        [Theory]
+        [InlineData(true)]
+        [InlineData(false)]
+        public void GivenConnectionWhenRetryShouldUseConfiguredBehavior(bool isConnectionInstantiatedByInterface)
         {
             var configuration = new ConfigurationBuilder()
                 .Build();
-            
+
             var retryBehaviorMock = new Mock<IRetryBehavior>();
             var serviceProvider = new ServiceCollection()
                 .AddBusCore(configuration, builder =>
@@ -294,13 +296,17 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
                 })
                 .BuildServiceProvider();
 
-            var connection = serviceProvider.GetService<BusConnection>();
-
+            IBusConnection connection = null;
+            if(isConnectionInstantiatedByInterface)
+                connection = serviceProvider.GetService<IBusConnection>();
+            else
+                connection = serviceProvider.GetService<BusConnection>();
+            
             var exchange = Exchange.Default;
             var queue = Queue.Create(Guid.NewGuid().ToString());
             var routingKey = RoutingKey.Create(queue.Name.Value);
             BatchItem item = null;
-            
+
             connection.Publish(exchange, queue, routingKey, "Message");
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -318,7 +324,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             retryBehaviorMock.Setup(x => x.GetWaitTime(1))
                 .Returns(TimeSpan.FromMinutes(5))
                 .Verifiable();
-            
+
             connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, message) =>
             {
                 throw new Exception("Test");
