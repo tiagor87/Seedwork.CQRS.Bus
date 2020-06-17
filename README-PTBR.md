@@ -145,3 +145,27 @@ _connection.PublishFailed += (items, exception) =>
     ...
 };
 ```
+
+## RequestKey
+
+Às vezes, você só precisa rastrear sua mensagem em seus aplicativos, mas como?
+Bem, você pode definir uma RequestKey(chave de solicitação) para a mensagem e esse valor é passado a todos os consumidores.
+
+```c#
+var message = Message.Create("Message", 1, "Request-Key");
+_connection.Publish(exchange, queue, routingKey, message);
+```
+
+Para ler o valor no seu consumidor é bem simples também.
+```c#
+_connectionFixture.Connection.Subscribe<string>(
+    exchange,
+    queue,
+    routingKey,
+    prefetchCount,
+    async (scope, message) =>
+    {
+        log.Info(message.RequestKey);
+        // process message
+    });
+```

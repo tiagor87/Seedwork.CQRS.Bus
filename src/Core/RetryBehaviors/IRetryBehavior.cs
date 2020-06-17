@@ -1,6 +1,6 @@
 using System;
 
-namespace Seedwork.CQRS.Bus.Core
+namespace Seedwork.CQRS.Bus.Core.RetryBehaviors
 {
     public interface IRetryBehavior
     {
