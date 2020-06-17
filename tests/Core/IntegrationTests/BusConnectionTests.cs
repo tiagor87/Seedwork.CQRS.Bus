@@ -277,10 +277,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             callbackMessage.Should().Be(notification);
         }
 
-        [Theory]
-        [InlineData(true)]
-        [InlineData(false)]
-        public void GivenConnectionWhenRetryShouldUseConfiguredBehavior(bool isConnectionInstantiatedByInterface)
+        [Fact]
+        public void GivenConnectionWhenRetryShouldUseConfiguredBehavior()
         {
             var configuration = new ConfigurationBuilder()
                 .Build();
@@ -295,12 +293,8 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
                         .UseRetryBehabior(retryBehaviorMock.Object);
                 })
                 .BuildServiceProvider();
-
-            IBusConnection connection = null;
-            if(isConnectionInstantiatedByInterface)
-                connection = serviceProvider.GetService<IBusConnection>();
-            else
-                connection = serviceProvider.GetService<BusConnection>();
+            
+            var connection = serviceProvider.GetService<IBusConnection>();
             
             var exchange = Exchange.Default;
             var queue = Queue.Create(Guid.NewGuid().ToString());
@@ -335,6 +329,28 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             item.Should().NotBeNull();
             item.Queue.Name.Value.Should().EndWith("5m");
             retryBehaviorMock.VerifyAll();
+        }
+        
+        [Theory]
+        [InlineData(typeof(IBusConnection))]
+        [InlineData(typeof(BusConnection))]
+        public void GivenConnectionWhenGetServiceShouldReturnConnection(Type serviceType)
+        {
+            var configuration = new ConfigurationBuilder()
+                .Build();
+            var serviceProvider = new ServiceCollection()
+                .AddBusCore(configuration, builder =>
+                {
+                    builder.SetConnectionString("amqp://guest:guest@localhost:5672/")
+                        .IgnoreCertificate()
+                        .SetSerializer<BusSerializer>();
+                })
+                .BuildServiceProvider();
+
+            var connection = serviceProvider.GetService(serviceType);
+
+            connection.Should().NotBeNull();
+            connection.Should().BeOfType<BusConnection>();
         }
     }
 }
