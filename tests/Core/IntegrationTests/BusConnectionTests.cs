@@ -7,6 +7,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Seedwork.CQRS.Bus.Core.Configurations;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 using Xunit;
 
 namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests

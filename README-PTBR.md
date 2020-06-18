@@ -75,6 +75,7 @@ _connectionFixture.Connection.Subscribe<string>(
 
 Existem duas opções para o cálculo de tempo de espera disponíveis na biblioteca. São eles:
 
+* __ConstantRetryBehavior (PADRÃO)__: É retornado o valor do coeficiente;
 * __ArithmeticProgressionRetryBehavior__: O cálculo de espera obedece uma progressão aritmética aqui. T[final] = T[inicial] + (tentativa - 1) * coeficiente;
 * __GeometricProgressionRetryBehavior__: O cálculo de espera obedece uma progressão geométrica aqui. T[final] = T[inicial] * pow(coeficiente, tentativa - 1);
 
@@ -90,10 +91,12 @@ services
         options =>
         {
             options
+                // Constante
+                .UseConstantRetryBehavior(<coeficient>)
                 // Progressão aritmética
                 .UseArithmeticProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
                 // Progressão geométrica
-                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
+                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
                 // Custom
                 UseRetryBehavior(IRetryBehavior);
         });
@@ -137,7 +140,7 @@ _connection.PublishSuccessed += items =>
 };
 ```
 
-* **PublishFailed**: 103/5000Quando a publicação falha após todas as tentativas, o sistema despacha esse evento com as mensagens e exceção.
+* **PublishFailed**: Quando a publicação falha após todas as tentativas, o sistema despacha esse evento com as mensagens e exceção.
 
 ```c#
 _connection.PublishFailed += (items, exception) => 

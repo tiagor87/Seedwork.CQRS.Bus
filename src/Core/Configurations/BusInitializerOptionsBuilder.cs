@@ -18,7 +18,7 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         {
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             SetOptions("BusConnectionOptions");
-            UseArithmeticProgressionRetryBehavior(1);
+            UseConstantRetryBehavior(1);
         }
 
         public BusInitializerOptionsBuilder SetConnectionString(string connectionString)
@@ -47,6 +47,12 @@ namespace Seedwork.CQRS.Bus.Core.Configurations
         public BusInitializerOptionsBuilder UseGeometricProgressionRetryBehavior(int coeficient, int initialValue = 1)
         {
             _retryBehavior = new GeometricProgressionRetryBehavior(coeficient, initialValue);
+            return this;
+        }
+        
+        public BusInitializerOptionsBuilder UseConstantRetryBehavior(int coeficient)
+        {
+            _retryBehavior = new ConstantRetryBehavior(coeficient);
             return this;
         }
         
