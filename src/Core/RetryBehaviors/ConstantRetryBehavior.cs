@@ -16,7 +16,7 @@ namespace Seedwork.CQRS.Bus.Core.RetryBehaviors
             return maxAttempts <= 0 || attemptCount < maxAttempts;
         }
 
-        public TimeSpan GetWaitTime(int _)
+        public TimeSpan GetWaitTime(int attemptCount)
         {
             return TimeSpan.FromMinutes(_coeficient);
         }
