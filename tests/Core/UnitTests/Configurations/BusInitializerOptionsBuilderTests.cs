@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Seedwork.CQRS.Bus.Core.Configurations;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 using Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations.Stubs;
 using Xunit;
 
@@ -136,6 +137,21 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations
         }
         
         [Fact]
+        public void GivenBusInitializerOptionsWhenValidateCertificateShouldSetValidateToTrue()
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            
+            var builder = new BusInitializerOptionsBuilder(configuration);
+            var options = builder
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .ValidateCertificate()
+                .SetSerializer<BusSerializerStub>()
+                .Build();
+
+            options.ValidateCertificate.Should().BeTrue();
+        }
+        
+        [Fact]
         public void GivenBusInitializerOptionsWhenIgnoreCertificateShouldSetValidateToFalse()
         {
             var configuration = new ConfigurationBuilder().Build();
@@ -222,6 +238,54 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests.Configurations
 
             options.Should().NotBeNull();
             options.ConnectionOptions.Should().Be(connectionOptions);
+        }
+        
+        [Fact]
+        public void GivenBusInitializerOptionsWhenUseGeometricProgressionRetryBehaviorShouldSetRetryBehavior()
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            
+            var builder = new BusInitializerOptionsBuilder(configuration);
+            var options = builder
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .SetSerializer<BusSerializerStub>()
+                .UseGeometricProgressionRetryBehavior(1)
+                .Build();
+
+            options.RetryBehavior.Should().NotBeNull();
+            options.RetryBehavior.Should().BeOfType<GeometricProgressionRetryBehavior>();
+        }
+        
+        [Fact]
+        public void GivenBusInitializerOptionsWhenUseArithmeticProgressionRetryBehaviorShouldSetRetryBehavior()
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            
+            var builder = new BusInitializerOptionsBuilder(configuration);
+            var options = builder
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .SetSerializer<BusSerializerStub>()
+                .UseArithmeticProgressionRetryBehavior(1)
+                .Build();
+
+            options.RetryBehavior.Should().NotBeNull();
+            options.RetryBehavior.Should().BeOfType<ArithmeticProgressionRetryBehavior>();
+        }
+        
+        [Fact]
+        public void GivenBusInitializerOptionsWhenUseConstantRetryBehaviorShouldSetRetryBehavior()
+        {
+            var configuration = new ConfigurationBuilder().Build();
+            
+            var builder = new BusInitializerOptionsBuilder(configuration);
+            var options = builder
+                .SetConnectionString("amqp://guest:guest@localhost/")
+                .SetSerializer<BusSerializerStub>()
+                .UseConstantRetryBehavior(1)
+                .Build();
+
+            options.RetryBehavior.Should().NotBeNull();
+            options.RetryBehavior.Should().BeOfType<ConstantRetryBehavior>();
         }
     }
 }

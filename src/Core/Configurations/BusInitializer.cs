@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Framing.Impl;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 
 namespace Seedwork.CQRS.Bus.Core.Configurations
 {

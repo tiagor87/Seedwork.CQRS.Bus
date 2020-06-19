@@ -1,4 +1,5 @@
 ﻿using System;
+using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 
 namespace Seedwork.CQRS.Bus.Core.Configurations
 {
