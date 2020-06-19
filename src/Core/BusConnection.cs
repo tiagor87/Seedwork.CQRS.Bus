@@ -51,7 +51,7 @@ namespace Seedwork.CQRS.Bus.Core
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
                     TimeSpan.FromMilliseconds(_options.Value.PublisherBufferTtlInMilliseconds));
             _publisherBuffer.Cleared += PublishBufferOnCleared;
-            _retryBehavior = retryBehavior ?? new ArithmeticProgressionRetryBehavior(1);
+            _retryBehavior = retryBehavior ?? new ConstantRetryBehavior(1);
         }
 
         public BusConnection(BusConnectionString connectionString,

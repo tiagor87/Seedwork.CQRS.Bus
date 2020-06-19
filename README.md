@@ -83,6 +83,7 @@ _connectionFixture.Connection.Subscribe<string>(
 
 There are two options:
 
+* __ConstantRetryBehavior (DEFAULT)__: T[final] = coeficient;
 * __ArithmeticProgressionRetryBehavior__: T[final] = T[initial] + (attempt - 1) * coeficient;
 * __GeometricProgressionRetryBehavior__: T[final] = T[initial] * pow(coeficient, attempt - 1);
 
@@ -98,10 +99,12 @@ services
         options =>
         {
             options
+                // Constant
+                .UseConstantRetryBehavior(<coeficient>)
                 // Aritmethic progression 
                 .UseArithmeticProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
                 // Geometric progression
-                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue>)
+                .UseGeometricProgressionRetryBehavior(<coeficient>, <initialValue> = 1)
                 // Custom behavior
                 UseRetryBehavior(IRetryBehavior);
         });
