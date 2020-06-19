@@ -9,12 +9,13 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
         [Fact]
         public void GivenMessageShouldCreate()
         {
-            var message = Message.Create("message", 10);
+            var message = Message.Create("message", 10, "Test");
 
             message.Should().NotBeNull();
             message.Data.Should().Be("message");
             message.AttemptCount.Should().Be(0);
             message.MaxAttempts.Should().Be(10);
+            message.RequestKey.Should().Be("Test");
         }
 
         [Fact]
@@ -31,6 +32,14 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             Func<Message> action = () => Message.Create("message", -1);
 
             action.Should().Throw<ArgumentException>();
+        }
+
+        [Fact]
+        public void GivenMessageWhenRequestKeyNullShouldSetDefault()
+        {
+            var message = Message.Create("message");
+            
+            message.RequestKey.Should().NotBeNull();
         }
     }
 }

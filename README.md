@@ -156,3 +156,26 @@ _connection.PublishFailed += (items, exception) =>
     ...
 };
 ```
+## RequestKey
+
+Sometimes you just need to track your message over your applications, but how?
+Well, you can set a request key to the message, and that value is passed through all consumers.
+
+```c#
+var message = Message.Create("Message", 1, "Request-Key");
+_connection.Publish(exchange, queue, routingKey, message);
+```
+
+In your consumer it's quite simple to access the value.
+```c#
+_connectionFixture.Connection.Subscribe<string>(
+    exchange,
+    queue,
+    routingKey,
+    prefetchCount,
+    async (scope, message) =>
+    {
+        log.Info(message.RequestKey);
+        // process message
+    });
+```

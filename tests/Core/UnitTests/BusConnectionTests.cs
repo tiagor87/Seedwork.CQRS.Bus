@@ -228,11 +228,40 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
             _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
                 .Returns(body)
                 .Verifiable();
-            _basicPropertiesMock.SetupSet(x => x.Headers = new Dictionary<string, object>
-                {
-                    {"AttemptCount", 0},
-                    {"MaxAttempts", 5}
-                })
+            _basicPropertiesMock.SetupSet(x => x.Headers = It.Is<IDictionary<string, object>>(x => x.ContainsKey("MaxAttempts")
+                                                                                                   && x.ContainsKey("AttemptCount")
+                                                                                                   && x.ContainsKey("RequestKey")))
+                .Verifiable();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
+            var busConnection = GetBusConnection();
+            busConnection.Publish(exchange, queue, routingKey, notification);
+
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(10));
+
+            _publishBatchMock.VerifyAll();
+            _channelMock.Verify(x => x.CreateBasicProperties(), Times.Once());
+            _basicPropertiesMock.VerifyAll();
+        }
+        
+        [Fact]
+        public void GivenConnectionWhenPublishShouldConfigureRequestKeyForRetry()
+        {
+            const string notification = "test";
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+
+            _busSerializerMock.Setup(x => x.Serialize(It.IsAny<object>()))
+                .Returns(body)
+                .Verifiable();
+            _basicPropertiesMock.SetupSet(x => x.Headers = It.Is<IDictionary<string, object>>(dictionary => dictionary.ContainsKey("RequestKey")))
                 .Verifiable();
 
             var autoResetEvent = new AutoResetEvent(false);
@@ -590,6 +619,92 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
 
             autoResetEvent.WaitOne(TimeSpan.FromSeconds(10));
 
+            _publishBatchMock.VerifyAll();
+            _channelMock.Verify(x => x.QueueDeclare(
+                It.Is((string y) => y.EndsWith("-retry-1m")),
+                true,
+                false,
+                false,
+                It.Is<IDictionary<string, object>>(args =>
+                    args["x-dead-letter-exchange"].Equals(ExchangeName.Default.Value)
+                    && args["x-dead-letter-routing-key"].Equals(queue.Name.Value))), Times.Once());
+            _publishBatchMock.Verify(x => x.Add(
+                Exchange.Default.Name.Value,
+                It.Is((string y) => y.StartsWith(queue.Name.Value) && y.EndsWith("-retry-1m")),
+                false,
+                _basicPropertiesMock.Object,
+                It.IsAny<byte[]>()), Times.Once());
+        }
+        
+        [Fact]
+        public void GivenConnectionWhenSubscribeShouldExecuteCallbackAndRetryOnFailurePassingRequestKey()
+        {
+            var exchange = Exchange.Create("test", ExchangeType.Direct);
+            var queue = Queue.Create("test.requested");
+            var routingKey = RoutingKey.Create("test.route");
+            var body = Encoding.UTF8.GetBytes("test");
+            const ushort deliveryTag = 1;
+
+            const string requestKey = "RequestKeyTest";
+            _basicPropertiesMock.SetupGet(x => x.Headers)
+                .Returns(new Dictionary<string, object>
+                {
+                    {"RequestKey", requestKey}
+                })
+                .Verifiable();
+            _basicPropertiesMock.SetupSet(x =>
+                x.Headers = It.Is<IDictionary<string, object>>(x =>
+                    x.ContainsKey("RequestKey") && x["RequestKey"].Equals(requestKey)))
+                .Verifiable();
+
+            var loggerMock = new Mock<IBusLogger>();
+
+            _busSerializerMock.Setup(x => x.Deserialize<string>(body))
+                .Returns("test")
+                .Verifiable();
+            _serviceProviderMock.Setup(x => x.GetService(typeof(IBusLogger)))
+                .Returns(loggerMock.Object)
+                .Verifiable();
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _channelMock.Setup(x => x.BasicConsume(
+                    queue.Name.Value,
+                    false,
+                    It.IsAny<string>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<bool>(),
+                    It.IsAny<IDictionary<string, object>>(),
+                    It.IsAny<IBasicConsumer>()))
+                .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
+                    IDictionary<string, object> _, IBasicConsumer consumer) =>
+                {
+                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                        consumerTag,
+                        deliveryTag,
+                        false,
+                        exchange.Name.Value,
+                        routingKey.Value,
+                        _basicPropertiesMock.Object,
+                        body).Wait();
+                })
+                .Returns(Guid.NewGuid().ToString());
+
+            _publishBatchMock.Setup(x => x.Publish())
+                .Callback(() => autoResetEvent.Set())
+                .Verifiable();
+
+            var busConnection = GetBusConnection();
+            busConnection.Subscribe<string>(
+                exchange,
+                queue,
+                routingKey,
+                10,
+                (scope, @event) => throw new Exception());
+
+            autoResetEvent.WaitOne(TimeSpan.FromSeconds(10));
+
+            _basicPropertiesMock.VerifyAll();
             _publishBatchMock.VerifyAll();
             _channelMock.Verify(x => x.QueueDeclare(
                 It.Is((string y) => y.EndsWith("-retry-1m")),

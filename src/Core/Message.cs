@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -7,20 +8,22 @@ namespace Seedwork.CQRS.Bus.Core
 {
     public class Message
     {
-        protected Message(object data, int maxAttempts, int attemptCount)
+        protected Message(object data, int maxAttempts, int attemptCount, string requestKey = null)
         {
             Data = data;
             MaxAttempts = maxAttempts;
             AttemptCount = attemptCount;
+            RequestKey = requestKey ?? Guid.NewGuid().ToString();
         }
 
         public int AttemptCount { get; }
+        public string RequestKey { get; }
 
         public int MaxAttempts { get; }
 
         public object Data { get; }
 
-        public static Message Create(object data, int maxAttempts)
+        public static Message Create(object data, int maxAttempts = 5, string requestKey = null)
         {
             if (data == null)
             {
@@ -32,7 +35,7 @@ namespace Seedwork.CQRS.Bus.Core
                 throw new ArgumentException("The max attempts should be greater or equal to zero.");
             }
 
-            return new Message(data, maxAttempts, 0);
+            return new Message(data, maxAttempts, 0, requestKey);
         }
 
         protected internal virtual (byte[], IBasicProperties) GetData(IModel channel, IBusSerializer serializer)
@@ -42,14 +45,10 @@ namespace Seedwork.CQRS.Bus.Core
             basicProperties.Headers = new Dictionary<string, object>
             {
                 {nameof(AttemptCount), AttemptCount},
-                {nameof(MaxAttempts), MaxAttempts}
+                {nameof(MaxAttempts), MaxAttempts},
+                {nameof(RequestKey), RequestKey}
             };
             return (body, basicProperties);
-        }
-
-        public bool CanRetry()
-        {
-            return MaxAttempts == 0 || AttemptCount < MaxAttempts;
         }
     }
 
@@ -86,7 +85,8 @@ namespace Seedwork.CQRS.Bus.Core
             ulong deliveryTag,
             T data,
             int maxAttempts,
-            int attemptCount) : base(data, maxAttempts, attemptCount)
+            int attemptCount,
+            string requestKey) : base(data, maxAttempts, attemptCount, requestKey)
         {
             DeliveryTag = deliveryTag;
             Value = data;
@@ -184,13 +184,24 @@ namespace Seedwork.CQRS.Bus.Core
                 attempts = 0;
             }
 
+            if (@event.BasicProperties.Headers == null ||
+                !@event.BasicProperties.Headers.TryGetValue(nameof(RequestKey), out var requestKey))
+            {
+                requestKey = Guid.NewGuid();
+            }
+            else if (requestKey is byte[] bytes)
+            {
+                requestKey = Encoding.UTF8.GetString(bytes);
+            }
+
             var (onDone, onFail) = actions;
             var attemptCount = (int) attempts;
             return new Message<T>(
                     @event.DeliveryTag,
                     data,
                     (int) maxAttempts,
-                    ++attemptCount)
+                    ++attemptCount,
+                    requestKey.ToString())
                 .SetOnDone(onDone)
                 .SetOnFail(onFail)
                 .SetChannel(channel)

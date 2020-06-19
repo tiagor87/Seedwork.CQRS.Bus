@@ -246,6 +246,50 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
             message.Should().NotBeNull();
             message.Data.Should().Be(notification);
         }
+        
+        [Fact]
+        public void GivenConnectionWhenSubscribeAndFailShouldRequeueOnRetryQueueWithRequestKey()
+        {
+            var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
+            var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
+            var routingKey = RoutingKey.Create(queue.Name.Value);
+            const string notification = "Notification message";
+            string requestKey = $"Request-Key-{Guid.NewGuid()}";
+
+            var autoResetEvent = new AutoResetEvent(false);
+
+            _connectionFixture.Connection.PublishSuccessed += items =>
+            {
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-retry-1m")))
+                {
+                    autoResetEvent.Set();
+                }
+            };
+
+            _connectionFixture.Connection.Publish(exchange, queue, routingKey, Message.Create(notification, 5, requestKey));
+
+            Message<string> consumerMessage = null;
+
+            _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, m) =>
+            {
+                autoResetEvent.Set();
+                consumerMessage = m;
+                return Task.CompletedTask;
+            }, false);
+
+            autoResetEvent.WaitOne(); // Wait for subscribe to execute.
+
+            consumerMessage.Fail(new Exception());
+
+            autoResetEvent.WaitOne(); // Wait for retry message publishing.
+
+            var retryQueue = Queue.Create($"{queue.Name.Value}-retry-1m");
+
+            _connectionFixture.Connection.MessageCount(retryQueue).Should().Be(1);
+            var message = _connectionFixture.Connection.GetMessage(retryQueue);
+            message.Should().NotBeNull();
+            message.RequestKey.Should().Be(requestKey);
+        }
 
         [Fact]
         public void GivenConnectionWhenSubscribeShouldExecuteCallback()
