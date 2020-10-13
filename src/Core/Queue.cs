@@ -190,6 +190,14 @@ namespace Seedwork.CQRS.Bus.Core
             if (exchange.IsDefault) return;
             channel.QueueBind(Name.Value, exchange.Name.Value, routingKey.Value, _arguments);
         }
+        
+        protected internal void Bind(IModel channel, Exchange exchange, IEnumerable<RoutingKey> routingKeys)
+        {
+            foreach (var routingKey in routingKeys)
+            {
+                Bind(channel, exchange, routingKey);
+            }
+        }
 
         protected internal Queue CreateRetryQueue(TimeSpan ttl)
         {

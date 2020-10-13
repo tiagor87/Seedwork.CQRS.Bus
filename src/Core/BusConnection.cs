@@ -9,7 +9,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Polly;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
+using Seedwork.CQRS.Bus.Core.Consumers;
+using Seedwork.CQRS.Bus.Core.Consumers.Abstractions;
+using Seedwork.CQRS.Bus.Core.Consumers.Options;
 using Seedwork.CQRS.Bus.Core.RetryBehaviors;
 using TRBufferList.Core;
 
@@ -23,7 +25,7 @@ namespace Seedwork.CQRS.Bus.Core
     {
         private static volatile object _sync = new object();
         private readonly IConnectionFactory _connectionFactory;
-        private readonly ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)> _consumers;
+        private readonly ConcurrentBag<IConsumer> _consumers;
         private readonly IBusLogger _logger;
         private readonly IOptions<BusConnectionOptions> _options;
         private readonly BufferList<BatchItem> _publisherBuffer;
@@ -45,7 +47,7 @@ namespace Seedwork.CQRS.Bus.Core
             _serviceScopeFactory = serviceScopeFactory;
             _logger = logger;
             _options = options;
-            _consumers = new ConcurrentDictionary<string, (IModel, AsyncEventingBasicConsumer, Tasks)>();
+            _consumers = new ConcurrentBag<IConsumer>();
             _connectionFactory = connectionFactory;
             _publisherBuffer =
                 new BufferList<BatchItem>(_options.Value.PublisherBufferSize,
@@ -132,59 +134,14 @@ namespace Seedwork.CQRS.Bus.Core
         public void Subscribe<T>(Exchange exchange, Queue queue, RoutingKey routingKey, ushort prefetchCount,
             Func<IServiceScope, Message<T>, Task> action, bool autoAck = true)
         {
-            var channel = ConsumerConnection.CreateModel();
-            channel.BasicQos(0, prefetchCount, false);
-            Declare(exchange, queue, routingKey);
+            var consumer = new Consumer<T>(
+                this,
+                _logger,
+                _retryBehavior,
+                _serviceScopeFactory,
+                new ConsumerOptions<T>(_serializer, exchange, queue, prefetchCount, action, autoAck, _options.Value.ConsumerMaxParallelTasks, routingKey));
 
-            var consumer = new AsyncEventingBasicConsumer(channel);
-
-            var tasks = new Tasks(_options.Value.ConsumerMaxParallelTasks);
-            consumer.Received += (sender, args) =>
-            {
-                try
-                {
-                    var task = new Task(() =>
-                    {
-                        try
-                        {
-                            var message = Message<T>.Create(channel, exchange, queue, routingKey, _serializer, args,
-                                (OnDone, OnFail));
-                            using var scope = _serviceScopeFactory.CreateScope();
-                            try
-                            {
-                                action.Invoke(scope, message).GetAwaiter().GetResult();
-                                if (autoAck) message.Complete();
-                            }
-                            catch (Exception exception)
-                            {
-                                message.Fail(exception);
-                            }
-                        }
-                        catch (Exception exception)
-                        {
-                            _logger?.WriteException(nameof(Subscribe), exception,
-                                new KeyValuePair<string, object>("Event", Encoding.UTF8.GetString(args.Body.ToArray())));
-                            var failedQueue = queue.CreateFailedQueue();
-                            var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
-                            Publish(Exchange.Default, failedQueue, failedRoutingKey,
-                                ErrorMessage.Create(args.Body.ToArray(), args.BasicProperties));
-                            channel.BasicNack(args.DeliveryTag, false, false);
-                        }
-                    });
-                    tasks.Add(task);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.WriteException(typeof(T).Name, ex,
-                        new KeyValuePair<string, object>("args", args));
-                    channel.BasicNack(args.DeliveryTag, false, true);
-                }
-
-                return Task.CompletedTask;
-            };
-
-            var consumerTag = channel.BasicConsume(queue.Name.Value, false, consumer);
-            _consumers.GetOrAdd(consumerTag, (channel, consumer, tasks));
+            _consumers.Add(consumer);
         }
 
         public void Publish(Exchange exchange, Queue queue, RoutingKey routingKey, Message message)
@@ -256,30 +213,6 @@ namespace Seedwork.CQRS.Bus.Core
             return factory;
         }
 
-        private void OnDone<T>(Message<T> message) => message.Channel.BasicAck(message.DeliveryTag, false);
-
-        private void OnFail<T>(Exception exception, Message<T> message)
-        {
-            if (_retryBehavior.ShouldRetry(message.AttemptCount, message.MaxAttempts))
-            {
-                var retryQueue = message.Queue
-                    .CreateRetryQueue(_retryBehavior.GetWaitTime(message.AttemptCount));
-                var retryRoutingKey = RoutingKey.Create(retryQueue.Name.Value);
-                Publish(Exchange.Default, retryQueue, retryRoutingKey, message);
-            }
-            else
-            {
-                var failedQueue = message.Queue
-                    .CreateFailedQueue();
-                var failedRoutingKey = RoutingKey.Create(failedQueue.Name.Value);
-                Publish(Exchange.Default, failedQueue, failedRoutingKey, message);
-            }
-
-            message.Channel.BasicAck(message.DeliveryTag, false);
-
-            _logger?.WriteException(typeof(T).Name, exception, new KeyValuePair<string, object>("Event", message));
-        }
-
         private void PublishBufferOnCleared(IEnumerable<BatchItem> removedItems)
         {
             var items = removedItems.ToList();
@@ -348,16 +281,10 @@ namespace Seedwork.CQRS.Bus.Core
             if (disposing)
             {
                 _publisherBuffer.Clear();
-                
-                foreach (var consumerGroup in _consumers)
+
+                while (_consumers.TryTake(out var consumer))
                 {
-                    var key = consumerGroup.Key;
-                    var value = consumerGroup.Value;
-                    var (channel, _, tasks) = value;
-                    tasks.Dispose();
-                    channel.BasicCancel(key);
-                    channel.Close();
-                    channel.Dispose();
+                    consumer.Dispose();
                 }
                 
                 _consumerConnection?.Close();

@@ -88,7 +88,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -470,7 +470,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -535,7 +535,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -594,7 +594,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -679,7 +679,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
@@ -748,7 +748,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.UnitTests
                 .Callback((string queueName, bool autoAck, string consumerTag, bool noLocal, bool exclusive,
                     IDictionary<string, object> _, IBasicConsumer consumer) =>
                 {
-                    ((AsyncEventingBasicConsumer) consumer).HandleBasicDeliver(
+                    ((AsyncDefaultBasicConsumer) consumer).HandleBasicDeliver(
                         consumerTag,
                         deliveryTag,
                         false,
