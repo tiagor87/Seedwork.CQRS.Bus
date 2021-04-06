@@ -99,16 +99,17 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
         [Fact]
         public void GivenConnectionWhenSubscribeAndThrowAndMaxAttemptsAchievedShouldQueueOnFailedQueue()
         {
+            var test = new Test();
             var exchange = Exchange.Create("seedwork-cqrs-bus.integration-tests", ExchangeType.Direct);
             var queue = Queue.Create($"seedwork-cqrs-bus.integration-tests.queue-{Guid.NewGuid()}");
             var routingKey = RoutingKey.Create(queue.Name.Value);
-            var message = new TestMessage<string>(null, 1, 1, null, null);
+            var message = new TestMessage<Test>(test, 1, 1, null, null);
 
             var autoResetEvent = new AutoResetEvent(false);
 
             _connectionFixture.Connection.PublishSuccessed += items =>
             {
-                if (items.Any(x => x.Queue.Name.Value.EndsWith("-failed")))
+                if (items.Any(x => x.Queue.Name.Value.EndsWith("-failed") && x.Message.Data.Equals(test)))
                 {
                     autoResetEvent.Set();
                 }
@@ -116,7 +117,7 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             _connectionFixture.Connection.Publish(exchange, queue, routingKey, message);
 
-            _connectionFixture.Connection.Subscribe<string>(exchange, queue, routingKey, 1, (scope, m) =>
+            _connectionFixture.Connection.Subscribe<Test>(exchange, queue, routingKey, 1, (scope, m) =>
             {
                 autoResetEvent.Set();
                 throw new Exception();
@@ -396,6 +397,27 @@ namespace Seedwork.CQRS.Bus.Core.Tests.IntegrationTests
 
             connection.Should().NotBeNull();
             connection.Should().BeOfType<BusConnection>();
+        }
+        
+        public class Test
+        {
+            public Test()
+            {
+                Id = Guid.NewGuid();
+            }
+            
+            public Guid Id { get; set; }
+
+            public override int GetHashCode()
+            {
+                return Id.GetHashCode();
+            }
+
+            public override bool Equals(object obj)
+            {
+                if (obj is Test test) return Id.Equals(test.Id);
+                return false;
+            }
         }
     }
 }

@@ -231,6 +231,8 @@ namespace Seedwork.CQRS.Bus.Core
                     .Execute(() =>
                     {
                         using var channel = PublisherConnection.CreateModel();
+                        channel.ConfirmSelect();
+                        
                         var batch = channel.CreateBasicPublishBatch();
                         try
                         {
@@ -248,11 +250,12 @@ namespace Seedwork.CQRS.Bus.Core
                                         basicProperties, body);
                                 }
                             }
-
+                            
                             batch.Publish();
                         }
                         finally
                         {
+                            channel.WaitForConfirmsOrDie();
                             channel.Close();
                         }
                     });
